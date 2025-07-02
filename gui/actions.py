@@ -6,7 +6,7 @@ from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtCore import Qt
 
 if TYPE_CHECKING:
-    from ModuleItem import ModuleWidget, GroupWidget
+    from module_item import ModuleWidget, GroupWidget
 
 def add_context_menu(widget: QWidget, remove_cb: callable) -> None:
     """Attach a contextual menu with a single *Remove* action."""

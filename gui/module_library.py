@@ -5,7 +5,7 @@ from pathlib import Path
 from resources_loader import IconFiles
 
 
-from ModuleItem import ModuleWidget
+from module_item import ModuleWidget
 
 
 from PySide6.QtCore import Qt

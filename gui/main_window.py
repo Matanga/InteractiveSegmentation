@@ -16,8 +16,8 @@ import sys
 from panels import PatternInputPanel, PatternOutputPanel, EndpointPanel
 
 
-from ModuleLibrary import ModuleLibrary
-from PatternArea import PatternArea
+from module_library import ModuleLibrary
+from pattern_area import PatternArea
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (

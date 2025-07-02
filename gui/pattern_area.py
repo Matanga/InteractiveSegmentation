@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-
 from building_grammar.core import parse, validate
-from FacadeStrip import FacadeStrip
-from ModuleItem import GroupWidget, ModuleWidget
-
+from facade_strip import FacadeStrip
+from module_item import GroupWidget, ModuleWidget
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (

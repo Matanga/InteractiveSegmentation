@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
     QWidget
 )
 
-from ModuleItem import GroupWidget, ModuleWidget, _cleanup_empty_group
+from module_item import GroupWidget, ModuleWidget, _cleanup_empty_group
 
 
 
