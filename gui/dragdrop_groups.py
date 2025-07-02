@@ -19,8 +19,12 @@ from typing import Optional
 from pathlib import Path
 from resources_loader import IconFiles
 from actions import add_context_menu
+from panels import PatternInputPanel, PatternOutputPanel, EndpointPanel
+from building_grammar.core import parse, validate
 
-from PySide6.QtCore import Qt, QByteArray, QMimeData, QPoint
+
+
+from PySide6.QtCore import Qt, QByteArray, QMimeData, QPoint, Signal
 from PySide6.QtGui import QColor, QDrag, QMouseEvent, QPalette, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
@@ -34,8 +38,10 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
     QFileDialog,
-    QMessageBox
-
+    QMessageBox,
+    QDockWidget,
+    QMenuBar,
+    QMenu
 )
 
 # --------------------------------------------------------------------------- #
@@ -513,14 +519,51 @@ class FacadeStrip(QFrame):
 
 
 class PatternArea(QWidget):
+    patternChanged: Signal = Signal(str)
+
     def __init__(self, num_floors: int = 3, parent=None):
         super().__init__(parent)
+        self._num_floors = num_floors
+
         v = QVBoxLayout(self)
         v.setAlignment(Qt.AlignTop)
         v.setSpacing(4)
         for f in range(num_floors):
             v.addWidget(FacadeStrip(num_floors - f - 1))  # ground = last
 
+    # ------------------------------------------------------------------
+    def load_from_string(self, pattern_str: str, *, library: "ModuleLibrary") -> None:
+        """
+        MVP: wipe the current view and rebuild it from *pattern_str*.
+        """
+        model = parse(pattern_str)                 # 1) parse / validate
+        self._clear_view()                         # 2) clear existing strips
+
+        floor_count = len(model.floors)
+        for i, floor in enumerate(model.floors):   # 3) create a strip per line
+            strip_w = FacadeStrip(floor_count - i - 1)
+            self.layout().addWidget(strip_w)
+
+            for group in floor:                    # 4) create groups + modules
+                grp_w = GroupWidget(kind=group.kind)
+                strip_w.lay.addWidget(grp_w)
+
+                for mod in group.modules:
+                    # Instantiate a module widget (icon look-up can be added later)
+                    grp_w.layout().addWidget(ModuleWidget(mod.name, False))
+
+        self.patternChanged.emit(model.to_string())  # keep Output panel in sync
+
+    # ------------------------------------------------------------------
+    def _clear_view(self) -> None:
+        """Delete all child widgets (simple & brute-force)."""
+        lay = self.layout()
+        while lay.count():
+            item = lay.takeAt(0)
+            w = item.widget()
+            if w is not None:
+                w.setParent(None)
+                w.deleteLater()
 
 # --------------------------------------------------------------------------- #
 # Main window
@@ -528,23 +571,115 @@ class PatternArea(QWidget):
 
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    """IBG-PE prototype main window with menu bar & dockable panels."""
+
+    def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("IBG-PE – Pattern Editor (prototype)")
 
-        library = ModuleLibrary()
-        strips = PatternArea(3)
+        # ── 1. Core widgets (no parents yet) ───────────────────────────
+        self._library = ModuleLibrary()
+        self._pattern_area = PatternArea(3)
 
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setWidget(strips)
+        self._pattern_scroll = QScrollArea()
+        self._pattern_scroll.setWidgetResizable(True)
+        self._pattern_scroll.setWidget(self._pattern_area)
 
-        central = QWidget()
-        h = QHBoxLayout(central)
-        h.addWidget(library)
-        h.addWidget(scroll)
-        self.setCentralWidget(central)
+        # ── 2. Dock wrappers for the two main views ───────────────────
+        self._library_dock = self._make_dock(
+            title="Module Library",
+            widget=self._library,
+            initial_area=Qt.LeftDockWidgetArea,
+            allowed_areas=Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea,
+        )
+        self._pattern_dock = self._make_dock(
+            title="Pattern Area",
+            widget=self._pattern_scroll,
+            initial_area=Qt.RightDockWidgetArea,
+            allowed_areas=Qt.AllDockWidgetAreas,
+        )
 
+        # Empty central widget (all canvases live in docks)
+        self.setCentralWidget(QWidget())
+
+        # ── 3. Build menu bar & keep a handle to 'Window' menu ────────
+        self._build_menu_bar()
+
+        # ── 4. Extra panels: input / output / endpoint ────────────────
+        self._pattern_input_dock = self._make_dock(
+            title="Pattern Input",
+            widget=PatternInputPanel(),
+            initial_area=Qt.BottomDockWidgetArea,
+            allowed_areas=Qt.AllDockWidgetAreas,
+        )
+        self._pattern_output_dock = self._make_dock(
+            title="Pattern Output",
+            widget=PatternOutputPanel(),
+            initial_area=Qt.BottomDockWidgetArea,
+            allowed_areas=Qt.AllDockWidgetAreas,
+        )
+        # Show them as tabs
+        self.tabifyDockWidget(self._pattern_input_dock, self._pattern_output_dock)
+
+        self._endpoint_dock = self._make_dock(
+            title="Image Seed Workflow",
+            widget=EndpointPanel(),
+            initial_area=Qt.RightDockWidgetArea,
+            allowed_areas=Qt.AllDockWidgetAreas,
+        )
+
+        # ── 5. Add every dock’s toggleAction to Window ▸ ──────────────
+        for dock in (
+            self._library_dock,
+            self._pattern_dock,
+            self._pattern_input_dock,
+            self._pattern_output_dock,
+            self._endpoint_dock,
+        ):
+            self._window_menu.addAction(dock.toggleViewAction())
+
+        # ── 6. Data-flow wiring ───────────────────────────────────────
+        # Paste → Apply → PatternArea
+        self._pattern_input_dock.widget().patternApplied.connect(self._apply_pattern)
+        # PatternArea changed → keep output panel in sync
+        self._pattern_area.patternChanged.connect(            self._pattern_output_dock.widget().update_pattern        )
+
+    # ===================================================================
+    # helpers
+    # ===================================================================
+    def _apply_pattern(self, s: str) -> None:
+        """Slot: load a validated pattern string into the grid."""
+        self._pattern_area.load_from_string(s, library=self._library)
+
+    def _make_dock(
+        self,
+        *,
+        title: str,
+        widget: QWidget,
+        initial_area: Qt.DockWidgetArea,
+        allowed_areas: Qt.DockWidgetAreas,
+    ) -> QDockWidget:
+        """Create, configure and add a QDockWidget around *widget*."""
+        dock = QDockWidget(title, self)
+        dock.setObjectName(f"{title.replace(' ', '')}Dock")  # state save/restore
+        dock.setAllowedAreas(allowed_areas)
+        dock.setWidget(widget)
+        self.addDockWidget(initial_area, dock)
+        return dock
+
+    # -------------------------------------------------------------------
+    def _build_menu_bar(self) -> None:
+        """Create top-level menus and store references."""
+        bar: QMenuBar = self.menuBar()
+
+        self._file_menu: QMenu = bar.addMenu("&File")
+        self._edit_menu: QMenu = bar.addMenu("&Edit")
+        self._window_menu: QMenu = bar.addMenu("&Window")
+        self._help_menu: QMenu = bar.addMenu("&Help")
+
+        # Core view toggles appear first
+        self._window_menu.addAction(self._library_dock.toggleViewAction())
+        self._window_menu.addAction(self._pattern_dock.toggleViewAction())
 
 # --------------------------------------------------------------------------- #
 
