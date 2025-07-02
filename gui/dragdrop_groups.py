@@ -18,7 +18,7 @@ from enum import Enum, auto
 from typing import Optional
 from pathlib import Path
 from resources_loader import IconFiles
-
+from actions import add_context_menu
 
 from PySide6.QtCore import Qt, QByteArray, QMimeData, QPoint
 from PySide6.QtGui import QColor, QDrag, QMouseEvent, QPalette, QPixmap
@@ -121,8 +121,19 @@ class ModuleWidget(QLabel):
         self._origin_layout: Optional[QLayout] = None
         self._origin_index: int = -1
 
+        # ------------------------------------------------------ Context Menu
+        if not self.is_library:                    # <-- guard
+            self.setFocusPolicy(Qt.ClickFocus)     # ← NEW
+            add_context_menu(self, self._remove_self)
 
     # --- helpers ---------------------------------------------------------- #
+    def _remove_self(self) -> None:
+        lay = owning_layout(self)
+        if lay:
+            lay.removeWidget(self)
+        self.deleteLater()
+        _cleanup_empty_group(lay)  # already imported
+
     def _apply_palette(self) -> None:
         self.setStyleSheet(
             """
@@ -506,7 +517,7 @@ class PatternArea(QWidget):
         super().__init__(parent)
         v = QVBoxLayout(self)
         v.setAlignment(Qt.AlignTop)
-        v.setSpacing(8)
+        v.setSpacing(4)
         for f in range(num_floors):
             v.addWidget(FacadeStrip(num_floors - f - 1))  # ground = last
 
