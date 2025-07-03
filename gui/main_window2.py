@@ -4,7 +4,7 @@ import sys
 from functools import partial
 
 # --- Component Imports ---
-from endpoint_panel import EndpointPanel
+from segmentation_panel import EndpointPanel
 from module_library import ModuleLibrary
 from panels import PatternInputPanel, PatternOutputPanel
 from pattern_area import PatternArea
