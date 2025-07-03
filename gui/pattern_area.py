@@ -10,6 +10,14 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from typing import Iterable
+from building_grammar.core import GroupKind as CoreKind
+from module_item import GroupKind as UiKind, GroupWidget, ModuleWidget
+
+def _to_ui_kind(kind: CoreKind) -> UiKind:
+    """Map core.GroupKind → module_item.GroupKind."""
+    return UiKind.FILL if kind is CoreKind.FILL else UiKind.RIGID
+
 
 class PatternArea(QWidget):
     patternChanged: Signal = Signal(str)
@@ -27,26 +35,35 @@ class PatternArea(QWidget):
     # ------------------------------------------------------------------
     def load_from_string(self, pattern_str: str, *, library: "ModuleLibrary") -> None:
         """
-        MVP: wipe the current view and rebuild it from *pattern_str*.
+        Parse *pattern_str* and rebuild the canvas.
+
+        Raises
+        ------
+        GrammarError
+            If the input violates Houdini façade-grammar rules.
         """
-        model = parse(pattern_str)                 # 1) parse / validate
-        self._clear_view()                         # 2) clear existing strips
+        model = parse(pattern_str)  # 1) validate
+        self._clear_view()  # 2) reset grid
 
-        floor_count = len(model.floors)
-        for i, floor in enumerate(model.floors):   # 3) create a strip per line
-            strip_w = FacadeStrip(floor_count - i - 1)
-            self.layout().addWidget(strip_w)
+        for floor_idx, floor in enumerate(model.floors):
+            strip = FacadeStrip(len(model.floors) - floor_idx - 1)
+            self.layout().addWidget(strip)
 
-            for group in floor:                    # 4) create groups + modules
-                grp_w = GroupWidget(kind=group.kind)
-                strip_w.lay.addWidget(grp_w)
+            for grp in floor:
+                ui_grp = GroupWidget(kind=_to_ui_kind(grp.kind))
+                ui_grp.repeat = grp.repeat  # keep meta for later editing
+                strip.lay.addWidget(ui_grp)
 
-                for mod in group.modules:
-                    # Instantiate a module widget (icon look-up can be added later)
-                    grp_w.layout().addWidget(ModuleWidget(mod.name, False))
+                sequence: Iterable[str] = (
+                    grp.modules * (grp.repeat or 1)
+                    if grp.kind is CoreKind.RIGID  # visually honour repeat
+                    else grp.modules
+                )
+                for mod in sequence:
+                    ui_grp.layout().addWidget(ModuleWidget(mod.name, False))
 
-        self.patternChanged.emit(model.to_string())  # keep Output panel in sync
-
+        # 3) notify Output panel
+        self.patternChanged.emit(model.to_string())
     # ------------------------------------------------------------------
     def _clear_view(self) -> None:
         """Delete all child widgets (simple & brute-force)."""
