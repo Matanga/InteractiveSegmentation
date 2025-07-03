@@ -144,11 +144,9 @@ class Pattern:
 
 _GROUP_RE = re.compile(
     r"""
-        # <fill> group
-        (?P<fill><(?P<fill_inner>[^>]+)>)
-        |
-        # [rigid]n group (count optional → default = 1)
-        (?P<rigid>\[(?P<rigid_inner>[^\]]+)\](?P<count>\d*))
+    (?P<fill><(?P<fill_inner>[^>]+)>)      # <fill>
+  | (?P<rigid>\[(?P<rigid_inner>[^\]]+)\]  # [rigid]
+      (?P<count>\d*))                      # optional count
     """,
     re.VERBOSE,
 )
@@ -171,8 +169,17 @@ def _parse_group(token: str) -> Group:
     modules = [Module(name.strip()) for name in inner.split("-")]
     return Group(kind=GroupKind.RIGID, modules=modules, repeat=count)
 
-
 def _split_line(line: str) -> Sequence[str]:
+    """Return the sequence of <fill> / [rigid]n groups exactly as they appear.
+
+    Raises GrammarError if *any* stray character is found between groups.
+    """
+    tokens = [m.group(0) for m in _GROUP_RE.finditer(line)]
+    if "".join(tokens) != line.replace(" ", ""):   # guard against garbage
+        raise GrammarError(f"Unexpected characters outside groups: '{line}'")
+    return tokens
+
+def _split_li33ne(line: str) -> Sequence[str]:
     """Split *line* into raw group tokens without losing brackets.*"""
     tokens: list[str] = []
     depth = 0
