@@ -21,6 +21,8 @@ from typing import Any
 
 import requests
 from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6.QtCore import Qt, Signal
+
 
 # --------------------------------------------------------------------------- #
 # 0.  Constants, Helpers, and Ported Logic
@@ -178,6 +180,9 @@ class ImageDropLabel(QtWidgets.QLabel):
 # --------------------------------------------------------------------------- #
 
 class EndpointPanel(QtWidgets.QWidget):
+    patternGenerated = Signal(str)
+
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Image-Seed → Repeatable Panel")
@@ -414,6 +419,15 @@ class EndpointPanel(QtWidgets.QWidget):
         if self.current_thread: self.current_thread.deleteLater(); self.current_thread = None
         self._update_ui_state()
 
+    @QtCore.Slot(str)
+    def _repeat_done(self, rep_text: str):
+        repeatable_expression = fix_facade_expression(rep_text)
+        self.repeatable_text_edit.setPlainText(repeatable_expression)
+        self.status.setText("✔ Pipeline complete! Pattern sent to editor.")
+
+        # <<< EMIT THE SIGNAL with the final pattern
+        self.patternGenerated.emit(repeatable_expression)
+
     # --- UI State ---
     def _set_busy_state(self, message: str):
         self.status.setText(message);
@@ -430,6 +444,7 @@ class EndpointPanel(QtWidgets.QWidget):
         self.btn_sym.setEnabled(is_idle and self._image_path is not None)
         self.btn_rigid.setEnabled(is_idle and self._symbolic_bytes is not None)
         self.btn_rep.setEnabled(is_idle and self._rigid_text is not None)
+
 
 
 # --------------------------------------------------------------------------- #
