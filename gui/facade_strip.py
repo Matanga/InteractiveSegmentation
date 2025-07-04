@@ -94,6 +94,8 @@ class StripHeader(QWidget):
         self.style().drawPrimitive(QStyle.PrimitiveElement.PE_Widget, opt, painter, self)
 
 class FacadeStrip(QFrame):
+    structureChanged = Signal() # <<< NEW SIGNAL
+
     def __init__(self, floor_idx: int, parent=None):
         super().__init__(parent)
         self.floor_index = floor_idx
@@ -151,18 +153,23 @@ class FacadeStrip(QFrame):
         if e.mimeData().hasFormat("application/x-ibg-module"):
             data = json.loads(e.mimeData().data("application/x-ibg-module").data())
             grp = GroupWidget();
+            grp.structureChanged.connect(self.structureChanged.emit)
+
             self.module_container_layout.insertWidget(idx, grp)
             w = ModuleWidget(data["name"], False) if data.get("from_library") else e.source()
             grp.layout().addWidget(w)
             if not data.get("from_library"): w.show()
             e.acceptProposedAction()
             if not data.get("from_library"): _cleanup_empty_group(w._origin_layout)
+            self.structureChanged.emit() # <<< EMIT after drop
             return
         if e.mimeData().hasFormat("application/x-ibg-group"):
             w: GroupWidget = e.source();
+            w.structureChanged.connect(self.structureChanged.emit)
             self.module_container_layout.insertWidget(idx, w);
             w.show();
             e.acceptProposedAction()
+            self.structureChanged.emit() # <<< EMIT after drop
 
     def _insert_index(self, mouse_x: int) -> int:
         for i in range(self.module_container_layout.count()):

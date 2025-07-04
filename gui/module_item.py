@@ -7,7 +7,7 @@ from enum import Enum, auto
 
 
 
-from PySide6.QtCore import Qt, QByteArray, QMimeData
+from PySide6.QtCore import Qt, QByteArray, QMimeData, Signal
 from PySide6.QtGui import QColor, QDrag, QMouseEvent, QPixmap
 from PySide6.QtWidgets import (
     QFrame,
@@ -46,7 +46,7 @@ def owning_layout(w: QWidget) -> Optional[QLayout]:
         return par.layout()
     return None
 
-def _cleanup_empty_group(lay: QLayout) -> None:
+def _cleanup_empty_group(lay: QLayout, emitter: QWidget) -> None:
     """If *lay* belongs to a GroupWidget now devoid of ModuleWidgets → remove the group."""
     parent = lay.parent()
     if not isinstance(parent, GroupWidget):
@@ -60,6 +60,7 @@ def _cleanup_empty_group(lay: QLayout) -> None:
         if strip_lay:
             strip_lay.removeWidget(parent)
         parent.deleteLater()
+        emitter.structureChanged.emit() # Ensure change is propagated even on cleanup
 
 
 # --------------------------------------------------------------------------- #
@@ -69,6 +70,7 @@ def _cleanup_empty_group(lay: QLayout) -> None:
 
 class ModuleWidget(QLabel):
     ICONS: dict[str, QPixmap] = {}        # populated once by ModuleLibrary
+    structureChanged = Signal() # <<< NEW SIGNAL
 
     def __init__(self, name: str, is_library: bool = False, parent: QWidget | None = None,) -> None:
         """
@@ -113,6 +115,7 @@ class ModuleWidget(QLabel):
             lay.removeWidget(self)
         self.deleteLater()
         _cleanup_empty_group(lay)  # already imported
+        self.structureChanged.emit() # <<< EMIT after removal
 
     def _apply_palette(self) -> None:
         self.setStyleSheet(
@@ -174,6 +177,8 @@ class ModuleWidget(QLabel):
 
 
 class GroupWidget(QFrame):
+    structureChanged = Signal() # <<< NEW SIGNAL
+
     def __init__(self, kind: GroupKind = GroupKind.FILL, parent: QWidget | None = None):
         super().__init__(parent)
         self.kind: GroupKind = kind
@@ -214,6 +219,7 @@ class GroupWidget(QFrame):
             GroupKind.RIGID if self.kind is GroupKind.FILL else GroupKind.FILL
         )
         self._apply_palette()
+        self.structureChanged.emit()  # <<< EMIT after changing kind
 
     # ------------------------------------------------------------------- #
     # Group-level drag
@@ -268,7 +274,7 @@ class GroupWidget(QFrame):
             # Make sure we’re still at the original index (optional)
             current_idx = self._origin_strip.indexOf(self)
             if current_idx != self._origin_idx:
-                self._origin_strip.insertWidget(self._origin_idx, self) 
+                self._origin_strip.insertWidget(self._origin_idx, self)
 
     # ------------------------------------------------------------------- #
     # Accept modules dropped *inside* the group
@@ -295,15 +301,21 @@ class GroupWidget(QFrame):
         idx = self._insert_index(e.position().toPoint().x())
 
         if from_lib:
-            self._lay.insertWidget(idx, ModuleWidget(name, False))
+            new_widget = ModuleWidget(name, False)
+            # This is the crucial connection that was missing.
+            new_widget.structureChanged.connect(self.structureChanged.emit)
+            self._lay.insertWidget(idx, new_widget)
         else:
             w: ModuleWidget = e.source()
+            w.structureChanged.connect(self.structureChanged.emit)
             self._lay.insertWidget(idx, w)
             w.show()
 
         e.acceptProposedAction()
         if not data.get("from_library"):                # came from another group → clean that up
             _cleanup_empty_group(w._origin_layout)
+        self.structureChanged.emit()  # <<< EMIT after changing kind
+
     # ------------------------------------------------------------------- #
     # internal helpers
     def _insert_index(self, mouse_x: int) -> int:

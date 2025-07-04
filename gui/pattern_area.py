@@ -57,10 +57,13 @@ class PatternArea(QWidget):
         for floor_idx, floor_data in list(enumerate(model.floors)):
             strip = FacadeStrip(floor_idx)
             strip.header.remove_requested.connect(self._remove_strip)
+            strip.structureChanged.connect(self._regenerate_and_emit_pattern)
 
             for grp_data in floor_data:
                 ui_group = GroupWidget(kind=_to_ui_kind(grp_data.kind))
                 ui_group.repeat = grp_data.repeat
+                ui_group.structureChanged.connect(strip.structureChanged.emit)
+
                 strip.module_container_layout.addWidget(ui_group)
 
                 sequence: Iterable[Module] = (
@@ -69,7 +72,9 @@ class PatternArea(QWidget):
                 )
 
                 for mod_object in sequence:
-                    ui_group.layout().addWidget(ModuleWidget(mod_object.name, False))
+                    mod_widget =ModuleWidget(mod_object.name, False)
+                    mod_widget.structureChanged.connect(ui_group.structureChanged.emit)
+                    ui_group.layout().addWidget(mod_widget)
 
             # The key is to add each new strip to the *bottom* of the layout now.
             # Since we are iterating from the top floor down, this builds the correct visual stack.
@@ -89,6 +94,7 @@ class PatternArea(QWidget):
     def _add_strip(self, floor_idx: int):
         strip = FacadeStrip(floor_idx)
         strip.header.remove_requested.connect(self._remove_strip)
+        strip.structureChanged.connect(self._regenerate_and_emit_pattern)
         self._strips_layout.insertWidget(0, strip)
 
     def _add_strip_at_top(self):
@@ -101,6 +107,7 @@ class PatternArea(QWidget):
         self._strips_layout.removeWidget(strip_to_remove)
         strip_to_remove.deleteLater()
         self._re_index_floors()
+        self._regenerate_and_emit_pattern() # <<< REGENERATE after remove
 
     def _re_index_floors(self):
         num_floors = self._strips_layout.count()
@@ -111,3 +118,43 @@ class PatternArea(QWidget):
             new_floor_idx = num_floors - 1 - i
             strip.floor_index = new_floor_idx
             strip.header.update_label(new_floor_idx)
+        self._regenerate_and_emit_pattern()
+
+    def _regenerate_and_emit_pattern(self) -> None:
+        """
+        Reads the current visual layout of the canvas and builds the
+        canonical pattern string, then emits the patternChanged signal.
+        """
+        print('waea')
+        all_floors_text = []
+        # Iterate from bottom to top of the visual layout to get logical order
+        for i in range(self._strips_layout.count() - 1, -1, -1):
+            strip: FacadeStrip = self._strips_layout.itemAt(i).widget()
+            if not strip: continue
+
+            floor_groups_text = []
+            # Iterate through the groups in the strip
+            for j in range(strip.module_container_layout.count()):
+                group: GroupWidget = strip.module_container_layout.itemAt(j).widget()
+                if not isinstance(group, GroupWidget): continue
+
+                # Collect module names from within the group
+                module_names = []
+                for k in range(group.layout().count()):
+                    module: ModuleWidget = group.layout().itemAt(k).widget()
+                    if isinstance(module, ModuleWidget):
+                        module_names.append(module.name)
+
+                if not module_names: continue
+
+                # Format the group text based on its kind
+                group_text = "-".join(module_names)
+                if group.kind == UiKind.FILL:
+                    floor_groups_text.append(f"<{group_text}>")
+                else:  # RIGID
+                    floor_groups_text.append(f"[{group_text}]")
+
+            all_floors_text.append("".join(floor_groups_text))
+
+        final_pattern = "\n".join(reversed(all_floors_text))
+        self.patternChanged.emit(final_pattern)
