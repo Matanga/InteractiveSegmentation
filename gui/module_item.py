@@ -206,16 +206,28 @@ class GroupWidget(QFrame):
     # ------------------------------------------------------------------- #
     # Styling helpers
     def _apply_palette(self) -> None:
-        col = self.kind.colour().name()
-        self.setStyleSheet(
-            f"""
-            QFrame {{
-                background: {col};
-                border: 2px solid {col};
-                border-radius: 3px;
-            }}
-            """
+        parent_strip = self.parent()
+        is_sandbox = (
+            isinstance(parent_strip, QWidget) and # Check if it's a widget
+            hasattr(parent_strip, 'mode') and     # Check if it has a mode attribute
+            parent_strip.mode == "sandbox"
         )
+
+        if is_sandbox:
+            # <<< FIX: In sandbox mode, force a transparent, borderless style.
+            self.setStyleSheet("QFrame { background: transparent; border: none; }")
+        else:
+            # In structured mode, apply the normal color based on kind.
+            col = self.kind.colour().name()
+            self.setStyleSheet(
+                f"""
+                QFrame {{
+                    background: {col};
+                    border: 2px solid {col};
+                    border-radius: 3px;
+                }}
+                """
+            )
 
     # ------------------------------------------------------------------- #
     # Toggle kind by double-click
@@ -318,7 +330,7 @@ class GroupWidget(QFrame):
 
         e.acceptProposedAction()
         if not data.get("from_library"):                # came from another group → clean that up
-            _cleanup_empty_group(w._origin_layout)
+            _cleanup_empty_group(w._origin_layout,self)
         self.structureChanged.emit()  # <<< EMIT after changing kind
 
     # ------------------------------------------------------------------- #
