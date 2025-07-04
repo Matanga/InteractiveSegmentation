@@ -48,6 +48,7 @@ def owning_layout(w: QWidget) -> Optional[QLayout]:
 
 def _cleanup_empty_group(lay: QLayout, emitter: QWidget) -> None:
     """If *lay* belongs to a GroupWidget now devoid of ModuleWidgets → remove the group."""
+    if not lay: return # Safety check
     parent = lay.parent()
     if not isinstance(parent, GroupWidget):
         return
@@ -60,8 +61,9 @@ def _cleanup_empty_group(lay: QLayout, emitter: QWidget) -> None:
         if strip_lay:
             strip_lay.removeWidget(parent)
         parent.deleteLater()
-        emitter.structureChanged.emit() # Ensure change is propagated even on cleanup
-
+        # This is important: if the group is deleted, the emitter (the module)
+        # must still propagate the signal so the PatternArea updates.
+        emitter.structureChanged.emit()
 
 # --------------------------------------------------------------------------- #
 # Draggable module chip
@@ -114,8 +116,11 @@ class ModuleWidget(QLabel):
         if lay:
             lay.removeWidget(self)
         self.deleteLater()
-        _cleanup_empty_group(lay)  # already imported
-        self.structureChanged.emit() # <<< EMIT after removal
+        # <<< FIX: Pass `self` as the second argument.
+        if lay:
+             _cleanup_empty_group(lay, self)
+        else:
+             self.structureChanged.emit()
 
     def _apply_palette(self) -> None:
         self.setStyleSheet(
@@ -168,7 +173,7 @@ class ModuleWidget(QLabel):
                 self._origin_layout.insertWidget(self._origin_index, self)
                 self.show()
             else:                                              # moved away → maybe empty
-                _cleanup_empty_group(self._origin_layout)
+                _cleanup_empty_group(self._origin_layout, self)
 
 
 # --------------------------------------------------------------------------- #
