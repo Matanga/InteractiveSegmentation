@@ -72,23 +72,3 @@ class PatternOutputPanel(QWidget):
         self._viewer.setPlainText(new_str)
 
 
-# ──────────────────────────────────────────────────────────────
-# Endpoint-workflow placeholder
-# ──────────────────────────────────────────────────────────────
-class EndpointPanel(QWidget):
-    """
-    Stub for the future “Image Seed Workflow”.
-    Displays a placeholder until the PRD is updated to include networking.
-    """
-
-    def __init__(self) -> None:
-        super().__init__()
-
-        placeholder = QLabel(
-            "⚠️  Image-seed workflow is *not* in PRD v0.1.\n"
-            "Revise the scope before implementing."
-        )
-        placeholder.setAlignment(Qt.AlignCenter)
-
-        layout = QVBoxLayout(self)
-        layout.addWidget(placeholder)

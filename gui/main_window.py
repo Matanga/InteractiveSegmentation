@@ -7,7 +7,7 @@ from functools import partial
 from segmentation_panel import SegmentationPanel, RepeatableThread  # Import the thread
 from module_library import ModuleLibrary
 from panels import PatternInputPanel, PatternOutputPanel
-from pattern_area import PatternArea, SandboxPatternArea
+from pattern_area import PatternArea
 
 from PySide6.QtCore import Qt, Slot, QSize
 from PySide6.QtGui import QAction, QActionGroup

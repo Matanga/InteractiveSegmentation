@@ -1,163 +1,169 @@
 from __future__ import annotations
 
 import json
-from typing import Optional
-from actions import add_context_menu
 from enum import Enum, auto
-
-
+from typing import Optional
 
 from PySide6.QtCore import Qt, QByteArray, QMimeData, Signal
 from PySide6.QtGui import QColor, QDrag, QMouseEvent, QPixmap
-from PySide6.QtWidgets import (
-    QFrame,
-    QHBoxLayout,
-    QLabel,
-    QLayout,
-    QWidget
-)
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QLayout, QWidget
 
-# --------------------------------------------------------------------------- #
-# Domain-level helpers (pure enum, no core import to keep demo self-contained)
-# --------------------------------------------------------------------------- #
+from actions import add_context_menu
+
+# =========================================================================== #
+# Domain Enums & Utilities
+# =========================================================================== #
 
 
 class GroupKind(Enum):
+    """Defines the behavioral type of a group of modules."""
     FILL = auto()
     RIGID = auto()
 
     def colour(self) -> QColor:
+        """Returns the representative color for the group kind."""
         return QColor("#f7d9b0") if self is GroupKind.FILL else QColor("#9ec3f7")
 
-    def __str__(self) -> str:  # noqa: DunderStr
+    def __str__(self) -> str:
         return self.name.lower()
 
 
-# --------------------------------------------------------------------------- #
-# Utility
-# --------------------------------------------------------------------------- #
-
-
 def owning_layout(w: QWidget) -> Optional[QLayout]:
-    par = w.parent()
-    if isinstance(par, QLayout):
-        return par
-    if isinstance(par, QWidget):
-        return par.layout()
+    """Finds the layout that directly contains the given widget."""
+    parent = w.parent()
+    if isinstance(parent, QWidget):
+        return parent.layout()
+    # Fallback for cases where the parent might be a layout itself (less common).
+    if isinstance(parent, QLayout):
+        return parent
     return None
 
-def _cleanup_empty_group(lay: QLayout, emitter: QWidget) -> None:
-    """If *lay* belongs to a GroupWidget now devoid of ModuleWidgets → remove the group."""
-    if not lay: return # Safety check
-    parent = lay.parent()
-    if not isinstance(parent, GroupWidget):
+
+def _cleanup_empty_group(layout: QLayout, emitter: QWidget) -> None:
+    """
+    Checks if a layout's parent GroupWidget is empty, and if so, removes it.
+
+    This is called after a module is moved or removed to prevent empty group
+    containers from persisting on the canvas.
+
+    Args:
+        layout: The layout of the group to check.
+        emitter: The widget that should emit the structureChanged signal if the
+                 group is deleted.
+    """
+    if not layout:
+        return  # Safety check
+    parent_group = layout.parent()
+    if not isinstance(parent_group, GroupWidget):
         return
+
+    # Check if any module widgets remain in the group.
     has_modules = any(
-        isinstance(lay.itemAt(i).widget(), ModuleWidget)
-        for i in range(lay.count())
+        isinstance(layout.itemAt(i).widget(), ModuleWidget)
+        for i in range(layout.count())
     )
+
     if not has_modules:
-        strip_lay = owning_layout(parent)
-        if strip_lay:
-            strip_lay.removeWidget(parent)
-        parent.deleteLater()
-        # This is important: if the group is deleted, the emitter (the module)
-        # must still propagate the signal so the PatternArea updates.
+        if strip_layout := owning_layout(parent_group):
+            strip_layout.removeWidget(parent_group)
+        parent_group.deleteLater()
+        # Ensure the overall structure change is reported.
         emitter.structureChanged.emit()
 
-# --------------------------------------------------------------------------- #
-# Draggable module chip
-# --------------------------------------------------------------------------- #
+
+# =========================================================================== #
+# Draggable Module Widget
+# =========================================================================== #
 
 
 class ModuleWidget(QLabel):
-    ICONS: dict[str, QPixmap] = {}        # populated once by ModuleLibrary
-    structureChanged = Signal() # <<< NEW SIGNAL
+    """
+    A draggable widget representing a single building module.
 
-    def __init__(self, name: str, is_library: bool = False, parent: QWidget | None = None,) -> None:
+    It can exist in a "library" state (template for creation) or a "canvas"
+    state (an instance in a group). It emits a `structureChanged` signal when
+    its state change requires the parent view to update.
+    """
+    ICONS: dict[str, QPixmap] = {}  # Populated once by ModuleLibrary
+    structureChanged = Signal()
+
+    def __init__(self, name: str, is_library: bool = False, parent: QWidget | None = None) -> None:
         """
-        Parameters
-        ----------
-        name
-            Canonical module id (usually the PNG filename stem).
-        is_library
-            True when the widget lives in the palette; False when on the canvas.
-        parent
-            Standard Qt parent.
+        Initializes a ModuleWidget.
+
+        Args:
+            name: The canonical ID of the module.
+            is_library: True if the widget is a template in the library palette.
+            parent: Standard Qt parent.
         """
         super().__init__(parent)
         self.name = name
         self.is_library = is_library
 
-        # ------------------------------------------------------ icon vs. text
+        # Display an icon if available; otherwise, fall back to text.
         if name in ModuleWidget.ICONS:
             pix: QPixmap = ModuleWidget.ICONS[name]
             self.setPixmap(pix)
-            self.setFixedSize(pix.width() + 4, pix.height() + 4)  # margin
-            self.setToolTip(name)                                 # accessibility
-        else:                                                     # text fallback
+            self.setFixedSize(pix.width() + 4, pix.height() + 4)  # Margin
+            self.setToolTip(name)  # Accessibility
+        else:
             self.setText(name)
             self.setAlignment(Qt.AlignCenter)
-           #self.setFixedWidth(60)
-            self._apply_palette()                                 # existing style
+            self._apply_palette()  # Style for text-based modules
 
-        # ------------------------------------------------------ drag helpers
+        # State for tracking drag-and-drop origin.
         self._origin_layout: Optional[QLayout] = None
         self._origin_index: int = -1
 
-        # ------------------------------------------------------ Context Menu
-        if not self.is_library:                    # <-- guard
-            self.setFocusPolicy(Qt.ClickFocus)     # ← NEW
+        # Add context menu for removal only to instances on the canvas.
+        if not self.is_library:
+            self.setFocusPolicy(Qt.ClickFocus)
             add_context_menu(self, self._remove_self)
 
-    # --- helpers ---------------------------------------------------------- #
     def _remove_self(self) -> None:
-        lay = owning_layout(self)
-        if lay:
-            lay.removeWidget(self)
-        self.deleteLater()
-        # <<< FIX: Pass `self` as the second argument.
-        if lay:
-             _cleanup_empty_group(lay, self)
+        """Removes the widget from its layout and deletes it."""
+        parent_layout = owning_layout(self)
+        if parent_layout:
+            parent_layout.removeWidget(self)
+            self.deleteLater()
+            # After removal, check if the parent group is now empty.
+            _cleanup_empty_group(parent_layout, self)
         else:
-             self.structureChanged.emit()
+            self.deleteLater()
+            self.structureChanged.emit()
 
     def _apply_palette(self) -> None:
-        self.setStyleSheet(
-            """
+        """Applies a default visual style for text-based modules."""
+        self.setStyleSheet("""
             QLabel {
                 background: #ffffff;
                 border: 1px solid #a0a0a0;
                 padding: 4px;
                 margin: 2px;
             }
-            """
-        )
+        """)
 
-    # --- Qt events ------------------------------------------------------- #
     def mousePressEvent(self, e: QMouseEvent) -> None:
+        """Initiates a drag-and-drop operation for the module."""
         if e.button() != Qt.LeftButton:
             return
 
+        # 1. Prepare MIME data with module information.
         mime = QMimeData()
-        mime.setData(
-            "application/x-ibg-module",
-            QByteArray(
-                json.dumps(
-                    {
-                        "type": "module",
-                        "name": self.name,
-                        "from_library": self.is_library,
-                    }
-                ).encode()
-            ),
-        )
+        payload = json.dumps({
+            "type": "module",
+            "name": self.name,
+            "from_library": self.is_library,
+        }).encode()
+        mime.setData("application/x-ibg-module", QByteArray(payload))
 
+        # 2. Configure and start the drag operation.
         drag = QDrag(self)
         drag.setMimeData(mime)
         drag.setPixmap(self.grab())
         drag.setHotSpot(e.pos())
 
+        # 3. If moving an existing module, hide it and store its origin.
         if not self.is_library:
             self._origin_layout = owning_layout(self)
             if self._origin_layout:
@@ -165,141 +171,121 @@ class ModuleWidget(QLabel):
                 self._origin_layout.removeWidget(self)
             self.hide()
 
-        result = drag.exec( Qt.MoveAction)
+        # 4. Execute the drag loop.
+        result = drag.exec(Qt.MoveAction)
 
-        # drag cancelled
+        # 5. Finalize after the drag ends.
         if not self.is_library and self._origin_layout:
-            if result != Qt.MoveAction:                        # drag cancelled → restore
+            if result != Qt.MoveAction:  # Drag was cancelled, so restore it.
                 self._origin_layout.insertWidget(self._origin_index, self)
                 self.show()
-            else:                                              # moved away → maybe empty
+            else:  # Drag succeeded, so clean up its original group if it's now empty.
                 _cleanup_empty_group(self._origin_layout, self)
 
 
-# --------------------------------------------------------------------------- #
-# Group container  (NEW)
-# --------------------------------------------------------------------------- #
+# =========================================================================== #
+# Group Container Widget
+# =========================================================================== #
 
 
 class GroupWidget(QFrame):
-    structureChanged = Signal() # <<< NEW SIGNAL
+    """
+    A container for ModuleWidgets that can be either 'RIGID' or 'FILL'.
+    It accepts drops of modules and can itself be dragged and dropped.
+    """
+    structureChanged = Signal()
 
     def __init__(self, kind: GroupKind = GroupKind.FILL, parent: QWidget | None = None):
         super().__init__(parent)
-        self.kind: GroupKind = kind
-        self.repeat: int | None = None  # reserved
+        self.kind = kind
+        self.repeat: int | None = None  # Reserved for future use
         self.setAcceptDrops(True)
 
         self._lay = QHBoxLayout(self)
-        self._lay.setContentsMargins(2,2,2,2)
+        self._lay.setContentsMargins(2, 2, 2, 2)
         self._lay.setSpacing(2)
+
+        # A visual indicator for drop locations inside the group.
         self._indicator = QWidget()
         self._indicator.setFixedSize(6, 30)
         self._indicator.setStyleSheet("background:red;")
         self._indicator.hide()
 
+        # State for tracking drag-and-drop origin.
         self._origin_strip: Optional[QLayout] = None
         self._origin_idx: int = -1
 
         self._apply_palette()
 
-    # ------------------------------------------------------------------- #
-    # Styling helpers
     def _apply_palette(self) -> None:
+        """Applies styling based on the group's kind and its parent's mode."""
         parent_strip = self.parent()
+        # Check if the parent FacadeStrip is in 'sandbox' mode.
         is_sandbox = (
-            isinstance(parent_strip, QWidget) and # Check if it's a widget
-            hasattr(parent_strip, 'mode') and     # Check if it has a mode attribute
-            parent_strip.mode == "sandbox"
+            isinstance(parent_strip, QWidget) and
+            getattr(parent_strip, 'mode', None) == "sandbox"
         )
 
         if is_sandbox:
-            # <<< FIX: In sandbox mode, force a transparent, borderless style.
+            # In sandbox mode, the group is just a transparent container.
             self.setStyleSheet("QFrame { background: transparent; border: none; }")
         else:
-            # In structured mode, apply the normal color based on kind.
+            # In structured mode, styling depends on the group kind.
             col = self.kind.colour().name()
-            self.setStyleSheet(
-                f"""
+            self.setStyleSheet(f"""
                 QFrame {{
                     background: {col};
                     border: 2px solid {col};
                     border-radius: 3px;
                 }}
-                """
-            )
+            """)
 
-    # ------------------------------------------------------------------- #
-    # Toggle kind by double-click
     def mouseDoubleClickEvent(self, e: QMouseEvent) -> None:
-        self.kind = (
-            GroupKind.RIGID if self.kind is GroupKind.FILL else GroupKind.FILL
-        )
+        """Toggles the group's kind between FILL and RIGID."""
+        self.kind = GroupKind.RIGID if self.kind is GroupKind.FILL else GroupKind.FILL
         self._apply_palette()
-        self.structureChanged.emit()  # <<< EMIT after changing kind
+        self.structureChanged.emit()
 
-    # ------------------------------------------------------------------- #
-    # Group-level drag
     def mousePressEvent(self, e: QMouseEvent) -> None:
-        """
-        Start a drag-and-drop operation for the entire group.
-
-        ▸ We **do not** remove the widget from its strip until the drag is completed
-          with ``Qt.MoveAction``.
-        ▸ The widget is only hidden for visual feedback; this does not disturb the
-          layout geometry, so the insert-index logic remains stable.
-        """
+        """Initiates a drag-and-drop operation for the entire group."""
         if e.button() != Qt.LeftButton:
             return
 
-        # --- build MIME payload -------------------------------------------------
+        # 1. Prepare MIME data.
         mime = QMimeData()
-        mime.setData(
-            "application/x-ibg-group",
-            QByteArray(json.dumps({"type": "group"}).encode()),
-        )
+        mime.setData("application/x-ibg-group", QByteArray(b'{"type": "group"}'))
 
-        # --- configure QDrag ----------------------------------------------------
+        # 2. Configure and start the drag.
         drag = QDrag(self)
         drag.setMimeData(mime)
-        drag.setPixmap(self.grab())  # snapshot used as ghost cursor
+        drag.setPixmap(self.grab())
         drag.setHotSpot(e.pos())
 
-        # --- remember origin (but DON’T touch the layout yet) -------------------
+        # 3. Store origin and hide. Unlike modules, we don't remove from the
+        #    layout yet, just make it invisible to preserve layout geometry.
         self._origin_strip = owning_layout(self)
-        self._origin_idx = (
-            self._origin_strip.indexOf(self) if self._origin_strip else -1
-        )
-
-        # Visual hint – keep geometry, just invisible
+        self._origin_idx = self._origin_strip.indexOf(self) if self._origin_strip else -1
         self.setVisible(False)
 
-        # --- run drag loop ------------------------------------------------------
+        # 4. Execute the drag loop.
         result = drag.exec(Qt.MoveAction)
 
-        # --- finalise -----------------------------------------------------------
-        self.setVisible(True)
-
+        # 5. Finalize after the drag ends.
+        self.setVisible(True)  # Always restore visibility.
         if result == Qt.MoveAction:
-            # Move succeeded → the widget has been inserted at the drop location
-            # Nothing else to do: Qt has already re-parented it in dropEvent().
+            # The drop target has already re-parented the widget.
+            # The structureChanged signal will be emitted by the strip.
             return
+        # If the drag was cancelled, the widget was never moved, so no
+        # further action is needed.
 
-        # Drag was cancelled → widget never left its origin strip; nothing moved.
-        # No cleanup required, but we keep the explicit guards for safety.
-        if self._origin_strip and self._origin_idx >= 0:
-            # Make sure we’re still at the original index (optional)
-            current_idx = self._origin_strip.indexOf(self)
-            if current_idx != self._origin_idx:
-                self._origin_strip.insertWidget(self._origin_idx, self)
-
-    # ------------------------------------------------------------------- #
-    # Accept modules dropped *inside* the group
-    def dragEnterEvent(self, e) -> None:
+    def dragEnterEvent(self, e: QMouseEvent) -> None:
+        """Accepts drops only if they contain a module."""
         if e.mimeData().hasFormat("application/x-ibg-module"):
             e.acceptProposedAction()
 
-    def dragMoveEvent(self, e) -> None:
+    def dragMoveEvent(self, e: QMouseEvent) -> None:
+        """Shows a visual indicator at the potential drop position."""
         if not e.mimeData().hasFormat("application/x-ibg-module"):
             return
         idx = self._insert_index(e.position().toPoint().x())
@@ -308,44 +294,44 @@ class GroupWidget(QFrame):
         self._indicator.show()
         e.acceptProposedAction()
 
-    def dragLeaveEvent(self, _e) -> None:
+    def dragLeaveEvent(self, _e: QMouseEvent) -> None:
+        """Hides the drop indicator when the drag leaves the widget."""
         self._remove_indicator()
 
-    def dropEvent(self, e) -> None:
+    def dropEvent(self, e: QMouseEvent) -> None:
+        """Handles dropping a module into this group."""
         self._remove_indicator()
         data = json.loads(e.mimeData().data("application/x-ibg-module").data())
-        name, from_lib = data["name"], data.get("from_library", False)
         idx = self._insert_index(e.position().toPoint().x())
+        source_module: ModuleWidget = e.source()
 
-        if from_lib:
-            new_widget = ModuleWidget(name, False)
-            # This is the crucial connection that was missing.
+        if data.get("from_library"):
+            # Create a new module instance from the library.
+            new_widget = ModuleWidget(data["name"], is_library=False)
             new_widget.structureChanged.connect(self.structureChanged.emit)
             self._lay.insertWidget(idx, new_widget)
         else:
-            w: ModuleWidget = e.source()
-            w.structureChanged.connect(self.structureChanged.emit)
-            self._lay.insertWidget(idx, w)
-            w.show()
+            # Move an existing module into this group.
+            source_module.structureChanged.connect(self.structureChanged.emit)
+            self._lay.insertWidget(idx, source_module)
+            source_module.show()
+            # Clean up the module's original group if it's now empty.
+            _cleanup_empty_group(source_module._origin_layout, self)
 
         e.acceptProposedAction()
-        if not data.get("from_library"):                # came from another group → clean that up
-            _cleanup_empty_group(w._origin_layout,self)
-        self.structureChanged.emit()  # <<< EMIT after changing kind
+        self.structureChanged.emit()
 
-    # ------------------------------------------------------------------- #
-    # internal helpers
     def _insert_index(self, mouse_x: int) -> int:
+        """Calculates the insert index for a new module based on mouse X-position."""
         for i in range(self._lay.count()):
-            w = self._lay.itemAt(i).widget()
-            if w is None or w is self._indicator:
-                continue
-            if mouse_x < w.x() + w.width() // 2:
-                return i
+            widget = self._lay.itemAt(i).widget()
+            if widget and widget is not self._indicator:
+                if mouse_x < widget.x() + widget.width() / 2:
+                    return i
         return self._lay.count()
 
     def _remove_indicator(self) -> None:
-        if self._indicator.parent() is self:
+        """Removes the drop indicator widget from the layout and hides it."""
+        if self._indicator.parent():
             self._lay.removeWidget(self._indicator)
         self._indicator.hide()
-

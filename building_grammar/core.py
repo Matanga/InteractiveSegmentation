@@ -179,22 +179,6 @@ def _split_line(line: str) -> Sequence[str]:
         raise GrammarError(f"Unexpected characters outside groups: '{line}'")
     return tokens
 
-def _split_li33ne(line: str) -> Sequence[str]:
-    """Split *line* into raw group tokens without losing brackets.*"""
-    tokens: list[str] = []
-    depth = 0
-    start = 0
-    for i, ch in enumerate(line):
-        if ch in "<[":
-            depth += 1
-        elif ch in ">]":
-            depth -= 1
-        elif ch == "-" and depth == 0:
-            tokens.append(line[start:i])
-            start = i + 1
-    tokens.append(line[start:])
-    return [t for t in tokens if t]
-
 
 def parse_line(line: str) -> List[Group]:
     """Parse a *single floor* pattern line."""
