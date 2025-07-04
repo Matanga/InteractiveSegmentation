@@ -4,7 +4,7 @@ import sys
 from functools import partial
 
 # --- Component Imports ---
-from segmentation_panel import EndpointPanel
+from segmentation_panel import SegmentationPanel
 from module_library import ModuleLibrary
 from panels import PatternInputPanel, PatternOutputPanel
 from pattern_area import PatternArea
@@ -53,11 +53,11 @@ class ImageSeedView(QWidget):
         super().__init__(parent)
 
         # This is our complete image-to-pattern workflow widget
-        self.endpoint_panel = EndpointPanel()
+        self.endpoint_panel = SegmentationPanel()
 
         layout = QVBoxLayout(self)
         # Add a bit of margin so it doesn't touch the window edges
-        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setContentsMargins(5, 5, 5, 5)
         layout.addWidget(self.endpoint_panel)
 
 
