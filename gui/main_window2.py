@@ -19,7 +19,8 @@ from PySide6.QtWidgets import (
     QToolBar,
     QVBoxLayout,
     QWidget,
-    QDockWidget,
+    QGroupBox,
+    QSplitter
 )
 
 # You can reuse the stylesheet from the previous step. For clarity, it's included here.
@@ -64,48 +65,93 @@ class ImageSeedView(QWidget):
 # ===================================================================
 # VIEW 2: The Pattern Editor Workflow
 # ===================================================================
-class PatternEditorView(QMainWindow):
+class PatternEditorView(QWidget):
     """
-    A self-contained main window for the pattern editor, providing the
-    exact dock layout requested.
+    A self-contained view for the pattern editor, using a flexible,
+    splitter-based layout for a professional user experience.
+
+    The layout is structured as follows:
+
+    +------------------------------------------------------------------+
+    | Main Vertical Splitter                                           |
+    |------------------------------------------------------------------|
+    |   TOP PANE (Visual Editing)                                      |
+    |   +-------------------+ +--------------------------------------+ |
+    |   |  Module Library   | |            Pattern Canvas            | |
+    |   +-------------------+ +--------------------------------------+ |
+    |------------------------------------------------------------------|
+    |   BOTTOM PANE (Text I/O)                                         |
+    |   +------------------------+ +---------------------------------+ |
+    |   |    Input Textbox       | |        Output Textbox         | |
+    |   +------------------------+ +---------------------------------+ |
+    +------------------------------------------------------------------+
     """
 
     def __init__(self, parent: QWidget | None = None):
+        # Change base class to QWidget, as we are managing our own layout now.
         super().__init__(parent)
 
-        # --- Core Components ---
+        # ===================================================================
+        #  1. CREATE CORE WIDGETS
+        # ===================================================================
         self._library = ModuleLibrary()
         self._pattern_area = PatternArea(3)
         self._input_panel = PatternInputPanel()
         self._output_panel = PatternOutputPanel()
 
-        # The pattern area needs to be scrollable
+        # ===================================================================
+        #  2. ASSEMBLE THE LAYOUT
+        # ===================================================================
+
+        # --- Assemble the TOP PANE (Visual Editing Area) ---
+        # The library and canvas are wrapped in GroupBoxes for consistent styling.
+        library_box = QGroupBox("Module Library")
+        library_layout = QVBoxLayout(library_box)
+        library_layout.addWidget(self._library)
+
         pattern_scroll = QScrollArea()
         pattern_scroll.setWidgetResizable(True)
         pattern_scroll.setWidget(self._pattern_area)
-        self.setCentralWidget(pattern_scroll)
 
-        # --- Dock Widgets Setup ---
-        # 1. Module Library on the left
-        library_dock = QDockWidget("Module Library", self)
-        library_dock.setWidget(self._library)
-        # Set a reasonable initial width
-        library_dock.setFeatures(QDockWidget.DockWidgetMovable | QDockWidget.DockWidgetFloatable)
-        self.addDockWidget(Qt.LeftDockWidgetArea, library_dock)
+        canvas_box = QGroupBox("Pattern Canvas")
+        canvas_layout = QVBoxLayout(canvas_box)
+        canvas_layout.addWidget(pattern_scroll)
 
-        # 2. Input/Output panels at the bottom
-        input_dock = QDockWidget("Text Pattern Input", self)
-        input_dock.setWidget(self._input_panel)
-        self.addDockWidget(Qt.BottomDockWidgetArea, input_dock)
+        # A horizontal splitter manages the library and the canvas.
+        visual_splitter = QSplitter(Qt.Horizontal)
+        visual_splitter.addWidget(library_box)
+        visual_splitter.addWidget(canvas_box)
+        # Set initial sizes to make the canvas larger, as requested.
+        visual_splitter.setSizes([250, 750])  # e.g., 250px for library, 750px for canvas
 
-        output_dock = QDockWidget("Text Pattern Output", self)
-        output_dock.setWidget(self._output_panel)
-        self.addDockWidget(Qt.BottomDockWidgetArea, output_dock)
+        # --- Assemble the BOTTOM PANE (Text I/O Area) ---
+        # A horizontal splitter manages the input and output text panels.
+        text_splitter = QSplitter(Qt.Horizontal)
+        text_splitter.addWidget(self._input_panel)
+        text_splitter.addWidget(self._output_panel)
 
-        # Make them side-by-side as requested
-        self.splitDockWidget(input_dock, output_dock, Qt.Horizontal)
+        # Wrap the text splitter in a GroupBox.
+        text_io_box = QGroupBox("Text Pattern I/O")
+        text_io_layout = QVBoxLayout(text_io_box)
+        text_io_layout.addWidget(text_splitter)
 
-        # --- Signal Connections (Internal to this view) ---
+        # --- Assemble the MAIN LAYOUT ---
+        # A vertical splitter manages the top visual pane and the bottom text pane.
+        main_splitter = QSplitter(Qt.Vertical)
+        main_splitter.addWidget(visual_splitter)
+        main_splitter.addWidget(text_io_box)
+        # Give more initial space to the visual editor.
+        main_splitter.setStretchFactor(0, 3)  # 3/4 of the space for visuals
+        main_splitter.setStretchFactor(1, 1)  # 1/4 of the space for text
+
+        # Set the final layout for the entire PatternEditorView widget.
+        root_layout = QVBoxLayout(self)
+        root_layout.addWidget(main_splitter)
+
+        # ===================================================================
+        #  3. CONNECT SIGNALS
+        # ===================================================================
+        # This logic remains the same, as the widgets themselves haven't changed.
         self._input_panel.patternApplied.connect(self.load_pattern)
         self._pattern_area.patternChanged.connect(self._output_panel.update_pattern)
 
@@ -113,14 +159,15 @@ class PatternEditorView(QMainWindow):
     def load_pattern(self, pattern_str: str):
         """Public slot to load a pattern from an external source."""
         try:
-            # Load the pattern into the visual editor
+            # Load the pattern into the visual editor canvas.
             self._pattern_area.load_from_string(pattern_str, library=self._library)
-            # Also update the text input panel to stay in sync
+            # Also update the text input panel to stay in sync.
+            # Note: Accessing a "private" attribute like _editor is not ideal.
+            # A cleaner approach would be a public set_text method on PatternInputPanel.
             self._input_panel._editor.setPlainText(pattern_str)
         except Exception as e:
-            # A proper error dialog would be good here
+            # A proper error dialog (QMessageBox) would be good here.
             print(f"Error loading pattern: {e}")
-
 
 # ===================================================================
 # MAIN APPLICATION WINDOW (The View Switcher)

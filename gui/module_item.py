@@ -157,7 +157,7 @@ class ModuleWidget(QLabel):
                 self._origin_layout.removeWidget(self)
             self.hide()
 
-        result = drag.exec(Qt.MoveAction)
+        result = drag.exec( Qt.MoveAction)
 
         # drag cancelled
         if not self.is_library and self._origin_layout:
@@ -218,30 +218,57 @@ class GroupWidget(QFrame):
     # ------------------------------------------------------------------- #
     # Group-level drag
     def mousePressEvent(self, e: QMouseEvent) -> None:
+        """
+        Start a drag-and-drop operation for the entire group.
+
+        ▸ We **do not** remove the widget from its strip until the drag is completed
+          with ``Qt.MoveAction``.
+        ▸ The widget is only hidden for visual feedback; this does not disturb the
+          layout geometry, so the insert-index logic remains stable.
+        """
         if e.button() != Qt.LeftButton:
             return
 
+        # --- build MIME payload -------------------------------------------------
         mime = QMimeData()
         mime.setData(
             "application/x-ibg-group",
             QByteArray(json.dumps({"type": "group"}).encode()),
         )
 
+        # --- configure QDrag ----------------------------------------------------
         drag = QDrag(self)
         drag.setMimeData(mime)
-        drag.setPixmap(self.grab())
+        drag.setPixmap(self.grab())  # snapshot used as ghost cursor
         drag.setHotSpot(e.pos())
 
+        # --- remember origin (but DON’T touch the layout yet) -------------------
         self._origin_strip = owning_layout(self)
-        if self._origin_strip:
-            self._origin_idx = self._origin_strip.indexOf(self)
-            self._origin_strip.removeWidget(self)
-        self.hide()
+        self._origin_idx = (
+            self._origin_strip.indexOf(self) if self._origin_strip else -1
+        )
 
+        # Visual hint – keep geometry, just invisible
+        self.setVisible(False)
+
+        # --- run drag loop ------------------------------------------------------
         result = drag.exec(Qt.MoveAction)
-        if result != Qt.MoveAction and self._origin_strip:
-            self._origin_strip.insertWidget(self._origin_idx, self)
-            self.show()
+
+        # --- finalise -----------------------------------------------------------
+        self.setVisible(True)
+
+        if result == Qt.MoveAction:
+            # Move succeeded → the widget has been inserted at the drop location
+            # Nothing else to do: Qt has already re-parented it in dropEvent().
+            return
+
+        # Drag was cancelled → widget never left its origin strip; nothing moved.
+        # No cleanup required, but we keep the explicit guards for safety.
+        if self._origin_strip and self._origin_idx >= 0:
+            # Make sure we’re still at the original index (optional)
+            current_idx = self._origin_strip.indexOf(self)
+            if current_idx != self._origin_idx:
+                self._origin_strip.insertWidget(self._origin_idx, self) 
 
     # ------------------------------------------------------------------- #
     # Accept modules dropped *inside* the group
