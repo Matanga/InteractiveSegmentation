@@ -100,15 +100,17 @@ class ModuleWidget(QLabel):
         self.name = name
         self.is_library = is_library
 
+        self.setContentsMargins(0,0,0,0)
+
         # Display an icon if available; otherwise, fall back to text.
         if name in ModuleWidget.ICONS:
             pix: QPixmap = ModuleWidget.ICONS[name]
             self.setPixmap(pix)
-            self.setFixedSize(pix.width() + 4, pix.height() + 4)  # Margin
+            self.setFixedSize(pix.width() , pix.height() )  # Margin
             self.setToolTip(name)  # Accessibility
         else:
             self.setText(name)
-            self.setAlignment(Qt.AlignCenter)
+            self.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self._apply_palette()  # Style for text-based modules
 
         # State for tracking drag-and-drop origin.
@@ -138,8 +140,8 @@ class ModuleWidget(QLabel):
             QLabel {
                 background: #ffffff;
                 border: 1px solid #a0a0a0;
-                padding: 4px;
-                margin: 2px;
+                padding: 0px;
+                margin: 0px;
             }
         """)
 
@@ -201,19 +203,23 @@ class GroupWidget(QFrame):
         self.repeat: int | None = None  # Reserved for future use
         self.setAcceptDrops(True)
 
+
         self._lay = QHBoxLayout(self)
-        self._lay.setContentsMargins(2, 2, 2, 2)
-        self._lay.setSpacing(2)
+        self._lay.setContentsMargins(0, 0, 0, 0)
+        self._lay.setSpacing(0)
 
         # A visual indicator for drop locations inside the group.
         self._indicator = QWidget()
-        self._indicator.setFixedSize(6, 30)
+        self._indicator.setFixedSize(6, 25)
         self._indicator.setStyleSheet("background:red;")
         self._indicator.hide()
 
         # State for tracking drag-and-drop origin.
         self._origin_strip: Optional[QLayout] = None
         self._origin_idx: int = -1
+
+        # Set Tooltip
+        self.setToolTip(str(self.kind))  # Accessibility
 
         self._apply_palette()
 
@@ -228,15 +234,19 @@ class GroupWidget(QFrame):
 
         if is_sandbox:
             # In sandbox mode, the group is just a transparent container.
-            self.setStyleSheet("QFrame { background: transparent; border: none; }")
+            self.setStyleSheet("QFrame { background: transparent; border: none; padding: 0px; }")
         else:
             # In structured mode, styling depends on the group kind.
             col = self.kind.colour().name()
             self.setStyleSheet(f"""
                 QFrame {{
                     background: {col};
-                    border: 2px solid {col};
-                    border-radius: 3px;
+                    border: 0px solid {col};
+                    border-radius: 0px;
+                    padding-left: 0px;
+                    padding-right: 0px;
+                    padding-top: 0px;
+                    padding-bottom: 6px; /* The only padding, for the drag handle */
                 }}
             """)
 
@@ -244,6 +254,7 @@ class GroupWidget(QFrame):
         """Toggles the group's kind between FILL and RIGID."""
         self.kind = GroupKind.RIGID if self.kind is GroupKind.FILL else GroupKind.FILL
         self._apply_palette()
+        self.setToolTip(str(self.kind))  # Accessibility
         self.structureChanged.emit()
 
     def mousePressEvent(self, e: QMouseEvent) -> None:

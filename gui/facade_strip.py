@@ -17,30 +17,60 @@ class StripHeader(QWidget):
     It is positioned at the start of a FacadeStrip.
     """
     remove_requested = Signal(object)
+    move_up_requested = Signal(object)
+    move_down_requested = Signal(object)
+
 
     def __init__(self, parent_strip: "FacadeStrip"):
         super().__init__(parent_strip)
         self.parent_strip = parent_strip
         self.setObjectName("StripHeader")
+
         self.name_edit = QLineEdit()
         self.name_edit.setObjectName("FloorNameEdit")
-        icon = self.style().standardIcon(QStyle.StandardPixmap.SP_DialogCloseButton)
-        self.remove_button = QPushButton(icon, "")
+
+        # --- Create Remove, Up and Down buttons ---
+        self.up_button = QPushButton("▲")
+        self.up_button.setObjectName("MoveButton")
+        self.up_button.setToolTip("Move floor up")
+
+        self.down_button = QPushButton("▼")
+        self.down_button.setObjectName("MoveButton")
+        self.down_button.setToolTip("Move floor down")
+
+        self.remove_button = QPushButton("X")
         self.remove_button.setObjectName("RemoveButton")
-        self.remove_button.setFixedSize(22, 22)
         self.remove_button.setToolTip("Remove this floor")
         self.remove_button.clicked.connect(lambda: self.remove_requested.emit(self.parent_strip))
+
+        # --- Connections ---
+        self.up_button.clicked.connect(lambda: self.move_up_requested.emit(self.parent_strip))
+        self.down_button.clicked.connect(lambda: self.move_down_requested.emit(self.parent_strip))
+        self.remove_button.clicked.connect(lambda: self.remove_requested.emit(self.parent_strip))
+
+
+        # --- Layouts ---
+        # A horizontal layout for the buttons
+        button_layout = QHBoxLayout()
+        button_layout.setContentsMargins(0, 0, 0, 0)
+        button_layout.setSpacing(4)
+        button_layout.addWidget(self.up_button)
+        button_layout.addWidget(self.down_button)
+        button_layout.addStretch() # Push the remove button to the right
+        button_layout.addWidget(self.remove_button)
+
+        # The main vertical layout for the header
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(8, 5, 8, 5)
-        layout.setSpacing(4)
+        layout.setContentsMargins(2, 2, 2, 2)
+        layout.setSpacing(2)
+        layout.addLayout(button_layout) # Button row is on top
         layout.addWidget(self.name_edit)
-        layout.addWidget(self.remove_button, 0, Qt.AlignLeft)
         layout.addStretch()
-        self.setFixedWidth(120)
+        self.setFixedWidth(150)
         self.setStyleSheet("""
             QWidget#StripHeader { background-color: #383838; border-radius: 4px; }
-            QLineEdit#FloorNameEdit { font-weight: bold; color: #e0e0e0; border: 1px solid #555; border-radius: 3px; padding: 4px; background-color: #484848; }
-            QPushButton#RemoveButton { font-family: "Segoe UI", Arial, sans-serif; font-weight: bold; font-size: 14px; color: #aaa; background-color: #484848; border: 1px solid #555; border-radius: 11px; }
+            QLineEdit#FloorNameEdit { font-weight: bold; color: #e0e0e0; border: 1px solid #555; padding: 4px; background-color: #484848; }
+            QPushButton#RemoveButton { font-family: "Segoe UI", Arial, sans-serif; font-weight: bold; font-size: 14px; color: #aaa; background-color: #484848; border: 1px solid #555; }
             QPushButton#RemoveButton:hover { background-color: #d14545; color: white; border-color: #ff6a6a; }
             QPushButton#RemoveButton:pressed { background-color: #a13535; }
         """)
@@ -69,37 +99,42 @@ class FacadeStrip(QFrame):
     """
     structureChanged = Signal()
     remove_requested = Signal(object)
+    move_up_requested = Signal(object)
+    move_down_requested = Signal(object)
 
     def __init__(self, floor_idx: int, mode: str = "structured", parent=None):
         super().__init__(parent)
         self.floor_index = floor_idx
         self.mode = mode
         self.setAcceptDrops(True)
-        self.setFixedHeight(80)
+        self.setFixedHeight(60)
         self.setMinimumWidth(240)
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         self.setObjectName("FacadeStrip")
-        self.setStyleSheet(
-            "QFrame#FacadeStrip { background-color: #4a4a4a; border: 1px solid #5a5a5a; border-radius: 4px; }")
-
+        self.setStyleSheet("QFrame#FacadeStrip { background-color: #4a4a4a; border: 1px solid #5a5a5a; border-radius: 4px; }")
         root_layout = QHBoxLayout(self)
-        root_layout.setContentsMargins(5, 5, 5, 5)
-        root_layout.setSpacing(10)
+        root_layout.setContentsMargins(0, 0, 0, 0)
+        root_layout.setSpacing(5)
 
         self.header = StripHeader(self)
+        # Pass the signals up from the header to the strip
         self.header.remove_requested.connect(self.remove_requested)
+        self.header.move_up_requested.connect(self.move_up_requested)
+        self.header.move_down_requested.connect(self.move_down_requested)
         root_layout.addWidget(self.header)
 
+
         self.module_container_layout = QHBoxLayout()
-        self.module_container_layout.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.module_container_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         root_layout.addLayout(self.module_container_layout, 1)
 
-        # A visual indicator for drop locations.
         self._indicator = QWidget()
         self._indicator.setFixedSize(10, 60)
         self._indicator.setStyleSheet("background:red;")
         self._indicator.hide()
+
         self.header.update_label(self.floor_index)
+
 
     def set_header_visibility(self, visible: bool):
         """Public method to show or hide the header."""

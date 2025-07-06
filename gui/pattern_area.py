@@ -141,6 +141,8 @@ class PatternArea(QWidget):
         for floor_idx, floor_data in reversed(list(enumerate(model.floors))):
             strip = FacadeStrip(floor_idx, mode=self.mode)
             strip.header.remove_requested.connect(self._remove_strip)
+            strip.header.move_up_requested.connect(self._move_strip_up)
+            strip.header.move_down_requested.connect(self._move_strip_down)
             strip.structureChanged.connect(self._regenerate_and_emit_pattern)
 
             for grp_data in floor_data:
@@ -178,7 +180,11 @@ class PatternArea(QWidget):
         new_floor_idx = len(target_list)
 
         strip = FacadeStrip(new_floor_idx, mode=mode_to_add_to)
+
+        # Connect all signals from the strip's header.
         strip.header.remove_requested.connect(self._remove_strip)
+        strip.header.move_up_requested.connect(self._move_strip_up)
+        strip.header.move_down_requested.connect(self._move_strip_down)
         strip.structureChanged.connect(self._regenerate_and_emit_pattern)
 
         # insertWidget(0,...) adds to the top of the UI.
@@ -200,6 +206,34 @@ class PatternArea(QWidget):
         self._strips_layout.removeWidget(strip_to_remove)
         strip_to_remove.deleteLater()
         self._re_index_floors()
+
+    @Slot(FacadeStrip)
+    def _move_strip_up(self, strip_to_move: FacadeStrip):
+        """Moves a given strip up by one position in the layout."""
+        # Find the current visual index of the strip.
+        index = self._strips_layout.indexOf(strip_to_move)
+        # Cannot move up if it's already at the top (index 0).
+        if index > 0:
+            # Remove the strip from its current position.
+            self._strips_layout.removeWidget(strip_to_move)
+            # Re-insert it one position higher (index - 1).
+            self._strips_layout.insertWidget(index - 1, strip_to_move)
+            # Update all floor names and regenerate the pattern string.
+            self._re_index_floors()
+
+    @Slot(FacadeStrip)
+    def _move_strip_down(self, strip_to_move: FacadeStrip):
+        """Moves a given strip down by one position in the layout."""
+        # Find the current visual index of the strip.
+        index = self._strips_layout.indexOf(strip_to_move)
+        # Cannot move down if it's already at the bottom.
+        if index < self._strips_layout.count() - 1:
+            # Remove the strip from its current position.
+            self._strips_layout.removeWidget(strip_to_move)
+            # Re-insert it one position lower (index + 1).
+            self._strips_layout.insertWidget(index + 1, strip_to_move)
+            # Update all floor names and regenerate the pattern string.
+            self._re_index_floors()
 
     def _re_index_floors(self):
         """
