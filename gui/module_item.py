@@ -122,6 +122,23 @@ class ModuleWidget(QLabel):
             self.setFocusPolicy(Qt.ClickFocus)
             add_context_menu(self, self._remove_self)
 
+    def refresh_icon(self) -> None:
+        """
+        Re-evaluates and resets the widget's pixmap based on the currently
+        loaded global ICONS cache.
+        """
+        # This method only applies to icon-based widgets.
+        if self.name in ModuleWidget.ICONS:
+            pix: QPixmap = ModuleWidget.ICONS[self.name]
+            self.setPixmap(pix)
+            # Ensure size is also updated if the new icon set has different dimensions
+            self.setFixedSize(pix.width(), pix.height())
+        else:
+            # If the icon is no longer in the cache, maybe fall back to text.
+            self.setPixmap(QPixmap()) # Clear the pixmap
+            self.setText(self.name)
+            self._apply_palette()
+
     def _remove_self(self) -> None:
         """Removes the widget from its layout and deletes it."""
         parent_layout = owning_layout(self)

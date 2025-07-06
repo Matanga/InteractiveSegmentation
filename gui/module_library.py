@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QGridLayout,
@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QScrollArea,
     QVBoxLayout,
     QWidget,
+    QComboBox
 )
 
 from module_item import ModuleWidget
@@ -27,52 +28,50 @@ class ModuleLibrary(QWidget):
     button to add new icons to the library at runtime.
     """
 
+    categoryChanged = Signal(str)
+
     # --- Constants for layout ---
     ICON_SIZE = 48  # The logical size (width and height) for each icon in pixels.
-    PADDING = 12    # The spacing between grid cells in pixels.
+    PADDING = 4    # The spacing between grid cells in pixels.
 
     def __init__(self, parent: QWidget | None = None) -> None:
         """Initializes the ModuleLibrary widget."""
         super().__init__(parent)
         self.setObjectName("ModuleLibrary")  # For QSS styling
 
-        # --- Data Initialization ---
-        # Load and cache pixmaps from resources.
-        self._pixmaps = self._make_pixmap_cache()
-        # This is a critical step: it provides all ModuleWidget instances
-        # with a global lookup for their icons, avoiding redundant loading.
-        ModuleWidget.ICONS = self._pixmaps
+        root_layout = QVBoxLayout(self)
+        root_layout.setContentsMargins(2, 2, 2, 2)
+        root_layout.setSpacing(5)
 
-        # --- UI Setup: Scroll Area and Grid ---
-        # Use a QScrollArea for content that might overflow.
-        scroll = QScrollArea(self)
-        scroll.setWidgetResizable(True)  # Allows the grid to use all available space.
+        # --- Category Selector Dropdown ---
+        self.category_selector = QComboBox()
+        self.category_selector.addItems(IconFiles.get_category_names())
+        self.category_selector.currentTextChanged.connect(self.set_category)
+        root_layout.addWidget(self.category_selector)
 
-        # The content widget holds the grid layout.
+        # --- Scroll Area and Grid ---
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
         self._content = QWidget()
         self._grid = QGridLayout(self._content)
         self._grid.setSpacing(self.PADDING)
-        self._grid.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
-
+        self._grid.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft) # Align left for consistency
         scroll.setWidget(self._content)
+        root_layout.addWidget(scroll)
 
-        # The main layout for this widget simply contains the scroll area.
-        box = QVBoxLayout(self)
-        box.setContentsMargins(0, 0, 0, 0)
-        box.addWidget(scroll)
-
-        # --- Widget Creation ---
-        # Create and store all items that will be placed in the grid.
+        # --- Widget Initialization ---
         self._item_widgets: list[QWidget] = []
         self._add_btn = QPushButton("＋", clicked=self._on_add_icon)
         self._add_btn.setFixedSize(self.ICON_SIZE, self.ICON_SIZE)
-        self._item_widgets.append(self._add_btn)
 
-        # Create a draggable ModuleWidget for each cached pixmap.
-        for name in sorted(self._pixmaps):
-            self._item_widgets.append(ModuleWidget(name, is_library=True))
+        # --- Styling ---
+        # <<< FIX: Remove background color to blend with parent QGroupBox.
+        self.setStyleSheet("QWidget#ModuleLibrary { background-color: transparent; }")
 
-        self._relayout_items()
+        # Load the initial category.
+        if initial_category := self.category_selector.currentText():
+            self.set_category(initial_category)
+
 
         # Apply a background color to distinguish the library from the canvas.
         self.setStyleSheet("""
@@ -80,6 +79,29 @@ class ModuleLibrary(QWidget):
                 background-color: #f4f6f8;
             }
         """)
+
+    def set_category(self, category_name: str) -> None:
+        """
+        Clears and rebuilds the icon palette to display modules from the
+        specified category.
+        """
+        # 1. Get icon data for the selected category.
+        icon_set = IconFiles.get_icons_for_category(category_name)
+
+        # 2. Create and cache scaled pixmaps for this category.
+        pixmap_cache = self._make_pixmap_cache(icon_set)
+        ModuleWidget.ICONS = pixmap_cache # Update the global lookup
+
+        # 3. Re-create the list of widgets to display.
+        self._item_widgets = [self._add_btn]
+        self._item_widgets.extend([
+            ModuleWidget(name, is_library=True)
+            for name in sorted(icon_set.keys())
+        ])
+
+        # 4. Trigger a re-layout and emit the change signal.
+        self._relayout_items()
+        self.categoryChanged.emit(category_name)
 
     def resizeEvent(self, event) -> None:
         """
@@ -89,7 +111,7 @@ class ModuleLibrary(QWidget):
         super().resizeEvent(event)
         self._relayout_items()
 
-    def _relayout_items(self) -> None:
+    def _relayout_itemssss(self) -> None:
         """
         Arranges all item widgets into a responsive grid.
 
@@ -113,21 +135,41 @@ class ModuleLibrary(QWidget):
             row, col = divmod(index, cols)
             self._grid.addWidget(widget, row, col, Qt.AlignHCenter)
 
-    def _make_pixmap_cache(self) -> dict[str, QPixmap]:
-        """
-        Loads all icon files specified by IconFiles, scales them, and
-        stores them in a dictionary cache.
 
-        Returns:
-            A dictionary mapping icon names (str) to QPixmap objects.
-        """
+    def _relayout_items(self) -> None:
+        """Arranges all item widgets into a responsive grid."""
+        for i in reversed(range(self._grid.count())):
+            if widget := self._grid.itemAt(i).widget():
+                widget.setParent(None)
+
+        cols = max(1, (self.width() // (self.ICON_SIZE + self.PADDING * 2)))
+        for index, widget in enumerate(self._item_widgets):
+            row, col = divmod(index, cols)
+            self._grid.addWidget(widget, row, col)
+
+
+    def _make_pixmap_cache(self, icon_set: dict[str, Path]) -> dict[str, QPixmap]:
+        """Creates a cache of scaled QPixmaps for a given set of icons."""
         cache: dict[str, QPixmap] = {}
-        for name in IconFiles.names:
-            pix = QPixmap(str(IconFiles.paths[name])).scaled(
+        for name, path in icon_set.items():
+            pix = QPixmap(str(path)).scaled(
                 self.ICON_SIZE, self.ICON_SIZE,
                 Qt.KeepAspectRatio, Qt.SmoothTransformation)
             cache[name] = pix
         return cache
+
+        """Creates a cache of scaled QPixmaps for a given set of icons."""
+        cache: dict[str, QPixmap] = {}
+        for name, path in icon_set.items():
+            pix = QPixmap(str(path)).scaled(
+                self.ICON_SIZE, self.ICON_SIZE,
+                Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            cache[name] = pix
+        return cache
+
+
+
+
 
     def _on_add_icon(self) -> None:
         """
@@ -138,7 +180,9 @@ class ModuleLibrary(QWidget):
         trigger a palette rebuild.
         """
         # --- (The logic for adding a new icon file is handled here) ---
-        ...
+        IconFiles.reload()
+        self.category_selector.clear()
+        self.category_selector.addItems(IconFiles.get_category_names())
         self._rebuild_palette()
 
     def _rebuild_palette(self) -> None:

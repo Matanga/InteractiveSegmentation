@@ -125,7 +125,7 @@ class PatternArea(QWidget):
             else:
                 all_floors_text.append("".join(floor_groups_text))
 
-        return "\n".join(reversed(all_floors_text))
+        return "\n".join(all_floors_text)
 
     def load_from_string(self, pattern_str: str, *, library: "ModuleLibrary") -> None:
         """Clears the view and builds a new layout from a pattern string."""
@@ -255,3 +255,28 @@ class PatternArea(QWidget):
         """Helper to generate the pattern string from the UI and emit the changed signal."""
         pattern = self.get_pattern_string()
         self.patternChanged.emit(pattern)
+
+    def redraw(self) -> None:
+        """
+        Forces a full redraw of all module widgets and regenerates the
+        output pattern string.
+
+        This is useful when external factors, like a change in the icon set,
+        require the canvas to update its appearance without changing its
+        underlying structure.
+        """
+        all_strips = self._structured_strips + self._sandbox_strips
+
+        # 1. Iterate through every strip that exists, visible or not.
+        for strip in all_strips:
+            if not isinstance(strip, FacadeStrip): continue
+
+            for j in range(strip.module_container_layout.count()):
+                if isinstance(group := strip.module_container_layout.itemAt(j).widget(), GroupWidget):
+                    for k in range(group.layout().count()):
+                        if isinstance(module := group.layout().itemAt(k).widget(), ModuleWidget):
+                            # Call the refresh method on every single module widget.
+                            module.refresh_icon()
+
+        # 2. After all icons are updated, regenerate the pattern for the active view.
+        self._regenerate_and_emit_pattern()

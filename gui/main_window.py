@@ -1,6 +1,8 @@
 # main_window.py (Final version with integrated Sandbox Editor)
 
 import sys
+from pathlib import Path
+
 from functools import partial
 
 # --- Component Imports ---
@@ -10,10 +12,11 @@ from panels import PatternInputPanel, PatternOutputPanel
 from pattern_area import PatternArea
 
 from PySide6.QtCore import Qt, Slot, QSize
-from PySide6.QtGui import QAction, QActionGroup
+from PySide6.QtGui import QAction, QActionGroup, QPixmap
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QScrollArea, QStackedWidget, QToolBar,
-    QVBoxLayout, QWidget, QGroupBox, QSplitter, QPushButton
+    QVBoxLayout, QWidget, QGroupBox, QSplitter, QPushButton, QLabel, QSizePolicy,
+    QHBoxLayout
 )
 
 # ... (APP_STYLESHEET remains the same)
@@ -187,13 +190,16 @@ class PatternEditorView(QWidget):
         self.pattern_area.patternChanged.connect(self._output_panel.update_pattern)
         self.convert_button.clicked.connect(self._on_convert_clicked)
 
+        self._library.categoryChanged.connect(self.pattern_area.redraw)
+
+
     def _create_canvas_toolbar(self) -> QToolBar:
         toolbar = QToolBar("Canvas Mode");
         toolbar.setMovable(False)
-        act_structured = QAction("Structured", self);
+        act_structured = QAction("Repeatable", self);
         act_structured.setCheckable(True);
         act_structured.setChecked(True)
-        act_sandbox = QAction("Sandbox", self);
+        act_sandbox = QAction("Rigid", self);
         act_sandbox.setCheckable(True)
         toolbar.addAction(act_structured);
         toolbar.addAction(act_sandbox)
@@ -273,27 +279,83 @@ class MainWindow(QMainWindow):
             self.on_pattern_generated
         )
 
+    # The new, robust method
     def _setup_main_toolbar(self):
         toolbar = QToolBar("Main Toolbar")
         toolbar.setMovable(False)
         self.addToolBar(toolbar)
 
+        # --- 1. Actions (on the left) ---
         act_show_seed = QAction("Image Seed Workflow", self)
-        act_show_seed.setCheckable(True);
-        act_show_seed.setChecked(True)
-        act_show_seed.triggered.connect(lambda: self.stack.setCurrentIndex(0))
-
+        act_show_seed.setCheckable(True)
         act_show_editor = QAction("Pattern Editor", self)
         act_show_editor.setCheckable(True)
+
+        action_group = QActionGroup(self)
+        action_group.addAction(act_show_seed)
+        action_group.addAction(act_show_editor)
+        action_group.setExclusive(True)
+
+        act_show_seed.triggered.connect(lambda: self.stack.setCurrentIndex(0))
         act_show_editor.triggered.connect(lambda: self.stack.setCurrentIndex(1))
 
-        toolbar.addAction(act_show_seed);
+        toolbar.addAction(act_show_seed)
         toolbar.addAction(act_show_editor)
 
-        # A small lambda to manage the checked state of the main toolbar
+        # --- 2. Spacer Widget (pushes everything to the right) ---
+        spacer = QWidget()
+        spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        toolbar.addWidget(spacer)
+
+        # --- 3. Logos (Corrected with Manual Scaling) ---
+        # Define a consistent height for the logos to fit the toolbar.
+        LOGO_HEIGHT = 35
+
+        # Construct paths to the logos
+        base_path = Path(__file__).parent
+        logo_se_path = base_path.parent / "assets" / "logos" / "logo_se.png"
+        logo_atlas_path = base_path.parent / "assets" / "logos" / "logo_atlas.png"
+
+        # --- Create and add the first logo ---
+        logo_se_label = QLabel()
+        if logo_se_path.exists():
+            # 1. Load the original, full-resolution pixmap.
+            original_pixmap = QPixmap(str(logo_se_path))
+
+            # 2. Create a new, scaled version of the pixmap.
+            #    scaledToHeight() automatically keeps the aspect ratio correct.
+            scaled_pixmap = original_pixmap.scaledToHeight(
+                LOGO_HEIGHT,
+                Qt.TransformationMode.SmoothTransformation
+            )
+
+            # 3. Set the pre-scaled pixmap on the label.
+            logo_se_label.setPixmap(scaled_pixmap)
+            logo_se_label.setToolTip("SE")
+            toolbar.addWidget(logo_se_label)
+
+        # Add a small separator for better visual spacing
+        toolbar.addSeparator()
+
+        # --- Create and add the second logo ---
+        logo_atlas_label = QLabel()
+        if logo_atlas_path.exists():
+            original_pixmap = QPixmap(str(logo_atlas_path))
+            scaled_pixmap = original_pixmap.scaledToHeight(
+                LOGO_HEIGHT,
+                Qt.TransformationMode.SmoothTransformation
+            )
+            logo_atlas_label.setPixmap(scaled_pixmap)
+            logo_atlas_label.setToolTip("Atlas")
+            toolbar.addWidget(logo_atlas_label)
+
+        # --- 4. Final Connections and State ---
         self.stack.currentChanged.connect(
             lambda i: (act_show_seed.setChecked(i == 0), act_show_editor.setChecked(i == 1))
         )
+        act_show_seed.setChecked(True)
+
+
 
     @Slot(str)
     def on_pattern_generated(self, pattern_str: str):
