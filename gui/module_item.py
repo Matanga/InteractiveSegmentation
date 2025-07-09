@@ -246,7 +246,7 @@ class GroupWidget(QFrame):
         # Check if the parent FacadeStrip is in 'sandbox' mode.
         is_sandbox = (
             isinstance(parent_strip, QWidget) and
-            getattr(parent_strip, 'mode', None) == "sandbox"
+            getattr(parent_strip, 'mode', None) == "rigid"
         )
 
         if is_sandbox:

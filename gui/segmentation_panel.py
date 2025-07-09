@@ -72,7 +72,7 @@ class SegmentationPanel(QtWidgets.QWidget):
     2. Symbolic -> Rigid Expression
     3. Rigid -> Repeatable Expression
     """
-    patternGenerated: Signal = Signal(str)
+    patternGenerated: Signal = Signal(str, str)  # pattern_string, mode ('repeatable' or 'rigid')
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         """Initializes the panel, its state, UI, and signal connections."""
@@ -118,8 +118,13 @@ class SegmentationPanel(QtWidgets.QWidget):
         self.btn_sym = QtWidgets.QPushButton("1. Generate Symbolic", icon=style.standardIcon(QtWidgets.QStyle.StandardPixmap.SP_MediaPlay))
         self.btn_rigid = QtWidgets.QPushButton("2. Generate Rigid", icon=style.standardIcon(QtWidgets.QStyle.StandardPixmap.SP_MediaPlay))
         self.btn_rep = QtWidgets.QPushButton("3. Generate Repeatable", icon=style.standardIcon(QtWidgets.QStyle.StandardPixmap.SP_MediaPlay))
-        self.btn_send_to_editor = QtWidgets.QPushButton("➤ Send to Editor", icon=style.standardIcon(QtWidgets.QStyle.StandardPixmap.SP_ArrowRight))
-        self.btn_send_to_editor.setObjectName("SendToEditor")
+        #self.btn_send_to_editor = QtWidgets.QPushButton("➤ Send to Editor", icon=style.standardIcon(QtWidgets.QStyle.StandardPixmap.SP_ArrowRight))
+        #self.btn_send_to_editor.setObjectName("SendToEditor")
+
+        self.btn_send_rigid = QtWidgets.QPushButton("➤ Send to Rigid Editor")
+        self.btn_send_rigid.setObjectName("SendToEditor")
+        self.btn_send_rep = QtWidgets.QPushButton("➤ Send to Repeatable Editor")
+        self.btn_send_rep.setObjectName("SendToEditor")
 
         # Column 2: Input & Parameters
         self.in_label = ImageDropLabel("Click or drop an image")
@@ -145,7 +150,7 @@ class SegmentationPanel(QtWidgets.QWidget):
         actions_lay.addWidget(self.btn_rigid)
         actions_lay.addWidget(self.btn_rep)
         actions_lay.addSpacing(20)
-        actions_lay.addWidget(self.btn_send_to_editor)
+        #actions_lay.addWidget(self.btn_send_to_editor)
         actions_column_layout = QtWidgets.QVBoxLayout()
         actions_column_layout.addWidget(actions_box)
         actions_column_layout.addStretch(1)
@@ -170,15 +175,27 @@ class SegmentationPanel(QtWidgets.QWidget):
         visuals_lay.addWidget(self.out_label, 1)
         visuals_lay.addWidget(self.grid_viz1_label, 1)
         visuals_lay.addWidget(self.grid_viz2_label, 1)
+
+        # Rigid Expression Box
+        rigid_box = QtWidgets.QGroupBox("Rigid Expression")
+        rigid_layout = QtWidgets.QVBoxLayout(rigid_box)
+        rigid_layout.addWidget(self.rigid_text_edit, 1)
+        rigid_layout.addWidget(self.btn_send_rigid)
+
+        # Repeatable Expression Box
+        rep_box = QtWidgets.QGroupBox("Repeatable Expression")
+        rep_layout = QtWidgets.QVBoxLayout(rep_box)
+        rep_layout.addWidget(self.repeatable_text_edit, 1)
+        rep_layout.addWidget(self.btn_send_rep)
+
         expressions_splitter = QtWidgets.QSplitter(Qt.Horizontal)
-        expressions_splitter.addWidget(self.rigid_text_edit)
-        expressions_splitter.addWidget(self.repeatable_text_edit)
-        expressions_box = QtWidgets.QGroupBox("Output Expressions")
-        expressions_box_layout = QtWidgets.QVBoxLayout(expressions_box)
-        expressions_box_layout.addWidget(expressions_splitter)
+        expressions_splitter.addWidget(rigid_box)
+        expressions_splitter.addWidget(rep_box)
+
         output_column_layout = QtWidgets.QVBoxLayout()
         output_column_layout.addWidget(visuals_box, 1)
-        output_column_layout.addWidget(expressions_box, 2)
+        output_column_layout.addWidget(expressions_splitter, 2)
+
         output_column_widget = QtWidgets.QWidget()
         output_column_widget.setLayout(output_column_layout)
 
@@ -274,7 +291,20 @@ class SegmentationPanel(QtWidgets.QWidget):
         self.btn_sym.clicked.connect(self.start_symbolic)
         self.btn_rigid.clicked.connect(self.start_rigid)
         self.btn_rep.clicked.connect(self.start_repeatable)
-        self.btn_send_to_editor.clicked.connect(self._on_send_to_editor)
+        self.btn_send_rigid.clicked.connect(self._on_send_rigid)
+        self.btn_send_rep.clicked.connect(self._on_send_rep)
+
+    @Slot()
+    def _on_send_rigid(self):
+        """Emits the rigid pattern for the sandbox editor."""
+        if self._rigid_text:
+            self.patternGenerated.emit(self._rigid_text, "sandbox")
+
+    @Slot()
+    def _on_send_rep(self):
+        """Emits the repeatable pattern for the structured editor."""
+        if self._final_repeatable_text:
+            self.patternGenerated.emit(self._final_repeatable_text, "structured")
 
     @Slot(str)
     def on_image_loaded(self, path: str) -> None:
@@ -361,11 +391,6 @@ class SegmentationPanel(QtWidgets.QWidget):
             self.current_thread = None
         self._update_ui_state()
 
-    @Slot()
-    def _on_send_to_editor(self) -> None:
-        """Emits the final generated pattern."""
-        if self._final_repeatable_text:
-            self.patternGenerated.emit(self._final_repeatable_text)
 
     def _set_busy_state(self, message: str) -> None:
         """Puts the UI into a busy/locked state while a thread is running."""
@@ -373,7 +398,7 @@ class SegmentationPanel(QtWidgets.QWidget):
         self.status.setStyleSheet("")
         self.progress.setRange(0, 0)  # Infinite progress bar
         self.progress.show()
-        for btn in (self.btn_sym, self.btn_rigid, self.btn_rep, self.btn_send_to_editor):
+        for btn in (self.btn_sym, self.btn_rigid, self.btn_rep, self.btn_send_rigid, self.btn_send_rep):
             btn.setEnabled(False)
 
     def _update_ui_state(self) -> None:
@@ -383,7 +408,8 @@ class SegmentationPanel(QtWidgets.QWidget):
         self.btn_sym.setEnabled(is_idle and self._image_path is not None)
         self.btn_rigid.setEnabled(is_idle and self._symbolic_bytes is not None)
         self.btn_rep.setEnabled(is_idle and self._rigid_text is not None)
-        self.btn_send_to_editor.setEnabled(is_idle and self._final_repeatable_text is not None)
+        self.btn_send_rigid.setEnabled(is_idle and self._rigid_text is not None)
+        self.btn_send_rep.setEnabled(is_idle and self._final_repeatable_text is not None)
 
     def _clear_outputs(self) -> None:
         """Resets all output widgets and internal derived data."""

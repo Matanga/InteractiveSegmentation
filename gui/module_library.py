@@ -111,30 +111,6 @@ class ModuleLibrary(QWidget):
         super().resizeEvent(event)
         self._relayout_items()
 
-    def _relayout_itemssss(self) -> None:
-        """
-        Arranges all item widgets into a responsive grid.
-
-        This method first clears the existing grid, then calculates the optimal
-        number of columns based on the current widget width, and finally
-        re-populates the grid, causing the items to reflow.
-        """
-        # Clear all existing widgets from the grid layout. Iterating in reverse is
-        # necessary because removing a widget from the layout by setting its
-        # parent to None will shift the indices of subsequent items.
-        for i in reversed(range(self._grid.count())):
-            if widget := self._grid.itemAt(i).widget():
-                widget.setParent(None)
-
-        # Calculate the number of columns for the new layout.
-        # This ensures the grid reflows based on the available width.
-        cols = max(1, (self.width() // (self.ICON_SIZE + self.PADDING)))
-
-        # Re-populate the grid with all stored item widgets.
-        for index, widget in enumerate(self._item_widgets):
-            row, col = divmod(index, cols)
-            self._grid.addWidget(widget, row, col, Qt.AlignHCenter)
-
 
     def _relayout_items(self) -> None:
         """Arranges all item widgets into a responsive grid."""
@@ -166,9 +142,6 @@ class ModuleLibrary(QWidget):
                 Qt.KeepAspectRatio, Qt.SmoothTransformation)
             cache[name] = pix
         return cache
-
-
-
 
 
     def _on_add_icon(self) -> None:

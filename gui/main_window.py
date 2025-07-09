@@ -192,34 +192,39 @@ class PatternEditorView(QWidget):
 
         self._library.categoryChanged.connect(self.pattern_area.redraw)
 
-
     def _create_canvas_toolbar(self) -> QToolBar:
-        toolbar = QToolBar("Canvas Mode");
+        toolbar = QToolBar("Canvas Mode")
         toolbar.setMovable(False)
-        act_structured = QAction("Repeatable", self);
-        act_structured.setCheckable(True);
-        act_structured.setChecked(True)
-        act_sandbox = QAction("Rigid", self);
-        act_sandbox.setCheckable(True)
-        toolbar.addAction(act_structured);
-        toolbar.addAction(act_sandbox)
+        self.act_structured = QAction("Repeatable", self)
+        self.act_structured.setCheckable(True)
+        self.act_structured.setChecked(True)
+        self.act_sandbox = QAction("Rigid", self)
+        self.act_sandbox.setCheckable(True)
+        toolbar.addAction(self.act_structured)
+        toolbar.addAction(self.act_sandbox)
 
         # Connect buttons to the set_mode method of the single PatternArea
-        act_structured.triggered.connect(lambda: self.set_editor_mode("structured"))
-        act_sandbox.triggered.connect(lambda: self.set_editor_mode("sandbox"))
+        self.act_structured.triggered.connect(lambda: self.set_editor_mode("repeatable"))
+        self.act_sandbox.triggered.connect(lambda: self.set_editor_mode("rigid"))
 
         # Use a group to manage the checked state
-        action_group = QActionGroup(self);
-        action_group.addAction(act_structured);
-        action_group.addAction(act_sandbox)
+        action_group = QActionGroup(self)
+        action_group.addAction(self.act_structured)
+        action_group.addAction(self.act_sandbox)
         action_group.setExclusive(True)
         return toolbar
 
     @Slot(str)
     def set_editor_mode(self, mode: str):
-        """Toggles the canvas mode and the visibility of the convert button."""
+        """Toggles the canvas mode and updates the UI to reflect it."""
         self.pattern_area.set_mode(mode)
         self.convert_button.setVisible(mode == "sandbox")
+
+        # Update the toolbar to reflect the current mode
+        if mode == "structured":
+            self.act_structured.setChecked(True)
+        else:  # "sandbox"
+            self.act_sandbox.setChecked(True)
 
     @Slot()
     def _on_convert_clicked(self):
@@ -238,20 +243,22 @@ class PatternEditorView(QWidget):
     def _on_conversion_success(self, structured_pattern: str):
         self.load_pattern(structured_pattern)
         # Find the toolbar action and check it to switch the mode visually
-        self.set_editor_mode("structured")
+        self.set_editor_mode("repeatable")
         for action in self.findChildren(QToolBar)[0].actions():
-            if action.text() == "Structured": action.setChecked(True)
+            if action.text() == "repeatable": action.setChecked(True)
         self.convert_button.setEnabled(True);
         self.convert_button.setText("➤ Convert to Structured Pattern")
 
     @Slot(str)
     def load_pattern(self, pattern_str: str):
         try:
-            self.set_editor_mode("structured")  # Always switch to structured mode on load
+            self.set_editor_mode("repeatable")  # Always switch to structured mode on load
             self.pattern_area.load_from_string(pattern_str, library=self._library)
             self._input_panel._editor.setPlainText(pattern_str)
         except Exception as e:
             print(f"Error loading pattern: {e}")
+
+
 # ===================================================================
 # MAIN APPLICATION WINDOW (The Top-Level View Switcher)
 # ===================================================================
@@ -355,14 +362,19 @@ class MainWindow(QMainWindow):
         )
         act_show_seed.setChecked(True)
 
-
-
-    @Slot(str)
-    def on_pattern_generated(self, pattern_str: str):
+    @Slot(str, str)
+    def on_pattern_generated(self, pattern_str: str, mode: str):
         """Handles the pattern coming from the image workflow."""
-        print("Pattern received from image workflow. Switching to editor...")
-        self.pattern_editor_view.load_pattern_in_structured_editor(pattern_str)
+        print(f"Pattern received for {mode} mode. Switching to editor...")
+
+        # 1. Switch the main view to the Pattern Editor
         self.stack.setCurrentWidget(self.pattern_editor_view)
+
+        # 2. Set the editor to the correct mode (structured/sandbox)
+        self.pattern_editor_view.set_editor_mode(mode)
+
+        # 3. Load the pattern string into the editor
+        self.pattern_editor_view.load_pattern(pattern_str)
 
 
 # --------------------------------------------------------------------------- #

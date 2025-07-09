@@ -29,30 +29,25 @@ from PySide6.QtCore import QBuffer, QByteArray, QIODevice, Qt, Signal
 BASE_URL = "https://api.dev.atlas.design"
 
 
-def call_symbolic_image(image_path: str) -> bytes:
+def call_symbolic_image(image_bytes: bytes, filename: str) -> bytes:
     """
     Calls the symbolic-image API endpoint to convert a facade image to a symbolic representation.
 
     Args:
-        image_path: The local file path to the input facade image.
-
-    Returns:
-        The symbolic image content as bytes (PNG format).
+        image_bytes: The image content as bytes.
+        filename: The original filename to use in the multipart request.
 
     Raises:
         requests.HTTPError: If the API call fails.
         RuntimeError: If the server returns an unexpected content type.
     """
     url = f"{BASE_URL}/symbolic-image"
-    with open(image_path, "rb") as fp:
-        img_bytes = fp.read()
-    files = {"image": (os.path.basename(image_path), img_bytes, "image/jpeg")}
+    files = {"image": (filename, image_bytes, "image/jpeg")}
     r = requests.post(url, files=files, timeout=60)
     r.raise_for_status()  # Raise an exception for bad status codes (4xx or 5xx)
     if "image/png" not in r.headers.get("Content-Type", ""):
         raise RuntimeError("Unexpected content-type from server")
     return r.content
-
 
 def call_rigid_expression(symbolic_bytes: bytes, cfg: dict[str, Any]):
     """
@@ -82,7 +77,6 @@ def call_rigid_expression(symbolic_bytes: bytes, cfg: dict[str, Any]):
     }
     return result["expression"], decoded_images
 
-
 def call_repeatable_expression(rigid_text: str, model: str) -> str:
     """
     Calls the repeatable-expression API to find repeating patterns in a rigid expression.
@@ -99,7 +93,7 @@ def call_repeatable_expression(rigid_text: str, model: str) -> str:
     """
     url = f"{BASE_URL}/repeatable-expression"
     payload = {"rigid_text": rigid_text, "openai_model": model}
-    r = requests.post(url, json=payload, timeout=60)
+    r = requests.post(url, json=payload, timeout=120)
     r.raise_for_status()
     return r.json()["repeatable_expression"]
 
@@ -214,7 +208,14 @@ class SymbolicThread(QtCore.QThread):
     def run(self):
         """The entry point for the thread's execution."""
         try:
-            result = call_symbolic_image(self.image_path)
+            # Read and proactively resize the user-provided image to prevent upload errors.
+            with open(self.image_path, "rb") as f:
+                original_bytes = f.read()
+
+            # A max dimension of 2048px is a generous but safe limit for facade photos.
+            resized_input_bytes = resize_image_bytes(original_bytes, max_size=2048)
+
+            result = call_symbolic_image(resized_input_bytes, os.path.basename(self.image_path))
             self.result_ready.emit(result)
         except Exception as exc:
             self.error.emit(str(exc))
