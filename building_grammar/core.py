@@ -50,7 +50,7 @@ class GroupKind(str, Enum):
     """Group flavour as defined by Houdini façade grammar."""
 
     FILL = "fill"
-    RIGID = "rigid"
+    RIGID = "Rigid"
 
     def __str__(self) -> str:  # noqa: DunderStr
         return self.value

@@ -25,7 +25,7 @@ class PatternArea(QWidget):
 
     def __init__(self, num_floors: int = 3, parent: QWidget | None = None):
         super().__init__(parent)
-        self.mode = "repeatable"  # Default mode
+        self.mode = "Repeatable"  # Default mode
         self.setAcceptDrops(True)
 
         # --- Internal State ---
@@ -58,12 +58,12 @@ class PatternArea(QWidget):
         Switches the canvas between 'structured' and 'sandbox' modes by swapping
         the visible list of FacadeStrips.
         """
-        if new_mode == self.mode or new_mode not in ("repeatable", "rigid"):
+        if new_mode == self.mode or new_mode not in ("Repeatable", "Rigid"):
             return
 
         # 1. Unload the currently visible strips into their corresponding cache list.
         # This involves removing them from the layout and hiding them.
-        current_strips_cache = self._structured_strips if self.mode == "repeatable" else self._sandbox_strips
+        current_strips_cache = self._structured_strips if self.mode == "Repeatable" else self._sandbox_strips
         current_strips_cache.clear()
         while self._strips_layout.count():
             item = self._strips_layout.takeAt(0)
@@ -75,7 +75,7 @@ class PatternArea(QWidget):
         self.mode = new_mode
 
         # 3. Load the strips for the new mode from its cache list.
-        new_strips_cache = self._structured_strips if self.mode == "repeatable" else self._sandbox_strips
+        new_strips_cache = self._structured_strips if self.mode == "Repeatable" else self._sandbox_strips
 
         # If the target mode's cache is empty, create a default set of strips.
         if not new_strips_cache:
@@ -113,14 +113,14 @@ class PatternArea(QWidget):
                 if not module_names_in_group:
                     continue
 
-                if self.mode == "repeatable":
+                if self.mode == "Repeatable":
                     group_text = "-".join(module_names_in_group)
                     wrapper = "<{}>" if group.kind == UiKind.FILL else "[{}]"
                     floor_groups_text.append(wrapper.format(group_text))
                 else:  # Sandbox mode collects all modules into one list.
                     sandbox_module_names.extend(module_names_in_group)
 
-            if self.mode == "rigid":
+            if self.mode == "Rigid":
                 all_floors_text.append(f"[{'-'.join(sandbox_module_names)}]" if sandbox_module_names else "[]")
             else:
                 all_floors_text.append("".join(floor_groups_text))
@@ -136,6 +136,8 @@ class PatternArea(QWidget):
             return
 
         self._clear_view()
+        # Get the correct list to populate, which is now empty.
+        target_list = self._structured_strips if self.mode == "Repeatable" else self._sandbox_strips
 
         # Build the UI from the parsed model, in reverse order for correct display.
         for floor_idx, floor_data in reversed(list(enumerate(model.floors))):
@@ -155,13 +157,14 @@ class PatternArea(QWidget):
                     mod_widget.structureChanged.connect(ui_group.structureChanged.emit)
                     ui_group.layout().addWidget(mod_widget)
             self._strips_layout.addWidget(strip)
+            target_list.append(strip)
 
         self.patternChanged.emit(self.get_pattern_string())
 
     def _clear_view(self):
         """Safely removes all strips from the current view and clears the cache."""
         # Clear the python list that holds the strip references for the active mode.
-        target_list = self._structured_strips if self.mode == "repeatable" else self._sandbox_strips
+        target_list = self._structured_strips if self.mode == "Repeatable" else self._sandbox_strips
         target_list.clear()
 
         # Clear the UI layout, deleting each widget.
@@ -176,7 +179,7 @@ class PatternArea(QWidget):
         Creates a strip for a specific mode, adds it to the top of the layout,
         and prepends it to the correct internal list.
         """
-        target_list = self._structured_strips if mode_to_add_to == "repeatable" else self._sandbox_strips
+        target_list = self._structured_strips if mode_to_add_to == "Repeatable" else self._sandbox_strips
         new_floor_idx = len(target_list)
 
         strip = FacadeStrip(new_floor_idx, mode=mode_to_add_to)
@@ -199,7 +202,7 @@ class PatternArea(QWidget):
     @Slot(FacadeStrip)
     def _remove_strip(self, strip_to_remove: FacadeStrip):
         """Removes a specific strip from the active list and the layout."""
-        target_list = self._structured_strips if self.mode == "repeatable" else self._sandbox_strips
+        target_list = self._structured_strips if self.mode == "Repeatable" else self._sandbox_strips
         if strip_to_remove in target_list:
             target_list.remove(strip_to_remove)
 

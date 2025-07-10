@@ -102,7 +102,7 @@ class FacadeStrip(QFrame):
     move_up_requested = Signal(object)
     move_down_requested = Signal(object)
 
-    def __init__(self, floor_idx: int, mode: str = "repeatable", parent=None):
+    def __init__(self, floor_idx: int, mode: str = "Repeatable", parent=None):
         super().__init__(parent)
         self.floor_index = floor_idx
         self.mode = mode
@@ -142,7 +142,7 @@ class FacadeStrip(QFrame):
 
     def mousePressEvent(self, e: QMouseEvent) -> None:
         """Initiates a drag operation for the entire strip in 'structured' mode."""
-        if self.mode == "repeatable" and e.button() == Qt.LeftButton:
+        if self.mode == "Repeatable" and e.button() == Qt.LeftButton:
             mime = QMimeData()
             mime.setData("application/x-facade-strip", b"")
             drag = QDrag(self)
@@ -157,7 +157,7 @@ class FacadeStrip(QFrame):
         """Accepts drags if they contain a module, or a group in 'structured' mode."""
         mime_data = e.mimeData()
         can_drop_module = mime_data.hasFormat("application/x-ibg-module")
-        can_drop_group = self.mode == "repeatable" and mime_data.hasFormat("application/x-ibg-group")
+        can_drop_group = self.mode == "Repeatable" and mime_data.hasFormat("application/x-ibg-group")
 
         if can_drop_module or can_drop_group:
             e.acceptProposedAction()
@@ -186,14 +186,14 @@ class FacadeStrip(QFrame):
         if mime_data.hasFormat("application/x-ibg-module"):
             data = json.loads(mime_data.data("application/x-ibg-module").data())
             # In structured mode, create a new group. In sandbox, find the single group.
-            group = self._find_or_create_sandbox_group() if self.mode == "rigid" else GroupWidget(parent=self)
+            group = self._find_or_create_sandbox_group() if self.mode == "Rigid" else GroupWidget(parent=self)
 
-            if self.mode == "repeatable":
+            if self.mode == "Repeatable":
                 group.structureChanged.connect(self.structureChanged.emit)
                 self.module_container_layout.insertWidget(insert_pos, group)
 
             module = ModuleWidget(data["name"], False) if data.get("from_library") else e.source()
-            group_insert_pos = group.layout().count() if self.mode == "rigid" else 0
+            group_insert_pos = group.layout().count() if self.mode == "Rigid" else 0
             group.layout().insertWidget(group_insert_pos, module)
 
             # If the module was moved (not new), show it and clean up its original container.
@@ -205,7 +205,7 @@ class FacadeStrip(QFrame):
             self.structureChanged.emit()
 
         # Case 2: A group is dropped (only in 'structured' mode)
-        elif self.mode == "repeatable" and mime_data.hasFormat("application/x-ibg-group"):
+        elif self.mode == "Repeatable" and mime_data.hasFormat("application/x-ibg-group"):
             group_widget: GroupWidget = e.source()
             group_widget.structureChanged.connect(self.structureChanged.emit)
             self.module_container_layout.insertWidget(insert_pos, group_widget)
@@ -234,7 +234,7 @@ class FacadeStrip(QFrame):
     def _insert_index(self, mouse_x: int) -> int:
         """Calculates the insert index for a new widget based on the mouse's X-position."""
         # In structured mode, the header takes up space that must be accounted for.
-        header_width = self.header.width() if self.mode == "repeatable" else 0
+        header_width = self.header.width() if self.mode == "Repeatable" else 0
 
         for i in range(self.module_container_layout.count()):
             widget = self.module_container_layout.itemAt(i).widget()

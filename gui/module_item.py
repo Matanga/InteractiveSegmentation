@@ -5,7 +5,7 @@ from enum import Enum, auto
 from typing import Optional
 
 from PySide6.QtCore import Qt, QByteArray, QMimeData, Signal
-from PySide6.QtGui import QColor, QDrag, QMouseEvent, QPixmap
+from PySide6.QtGui import QColor, QDrag, QMouseEvent, QPixmap, QShowEvent
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QLayout, QWidget
 
 from actions import add_context_menu
@@ -246,7 +246,7 @@ class GroupWidget(QFrame):
         # Check if the parent FacadeStrip is in 'sandbox' mode.
         is_sandbox = (
             isinstance(parent_strip, QWidget) and
-            getattr(parent_strip, 'mode', None) == "rigid"
+            getattr(parent_strip, 'mode', None) == "Rigid"
         )
 
         if is_sandbox:
@@ -363,3 +363,11 @@ class GroupWidget(QFrame):
         if self._indicator.parent():
             self._lay.removeWidget(self._indicator)
         self._indicator.hide()
+
+    def showEvent(self, event: QShowEvent) -> None:
+        """
+        Overrides the show event to ensure styling is correct *after* the
+        widget has been parented to a FacadeStrip.
+        """
+        super().showEvent(event)
+        self._apply_palette()

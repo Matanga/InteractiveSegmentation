@@ -7,7 +7,8 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtCore import Qt, Signal, Slot
 
 from segmentation_core import (
-    SymbolicThread, RigidThread, RepeatableThread, fix_facade_expression
+    SymbolicThread, RigidThread, RepeatableThread, fix_facade_expression,
+    _sanitize_rigid_for_sandbox
 )
 
 # =========================================================================== #
@@ -140,23 +141,30 @@ class SegmentationPanel(QtWidgets.QWidget):
         # Bottom Status Row
         self.progress = QtWidgets.QProgressBar(textVisible=False)
         self.status = QtWidgets.QLabel("Please load an image to begin.")
+        self.status.setWordWrap(True)
 
         # --- STEP 2: ASSEMBLE EACH COLUMN'S LAYOUT ---
         # Column 1: Workflow Actions
+        # Column 1: Workflow Actions & Status
         actions_box = QtWidgets.QGroupBox("Workflow Actions")
         actions_box.setObjectName("WorkflowActions")
         actions_lay = QtWidgets.QVBoxLayout(actions_box)
         actions_lay.addWidget(self.btn_sym)
         actions_lay.addWidget(self.btn_rigid)
         actions_lay.addWidget(self.btn_rep)
-        actions_lay.addSpacing(20)
-        #actions_lay.addWidget(self.btn_send_to_editor)
+
+        status_box = QtWidgets.QGroupBox("Current Status")
+        status_box_layout = QtWidgets.QVBoxLayout(status_box)
+        status_box_layout.addWidget(self.status)
+        status_box_layout.addWidget(self.progress)
+
         actions_column_layout = QtWidgets.QVBoxLayout()
         actions_column_layout.addWidget(actions_box)
+        actions_column_layout.addWidget(status_box)
         actions_column_layout.addStretch(1)
         actions_column_widget = QtWidgets.QWidget()
         actions_column_widget.setLayout(actions_column_layout)
-        actions_column_widget.setMinimumWidth(220)
+        actions_column_widget.setMinimumWidth(240)
 
         # Column 2: Input & Parameters
         input_box = QtWidgets.QGroupBox("Input Image")
@@ -212,13 +220,8 @@ class SegmentationPanel(QtWidgets.QWidget):
         root_splitter.setStretchFactor(0, 0)
         root_splitter.setStretchFactor(1, 1)
 
-        status_row_layout = QtWidgets.QHBoxLayout()
-        status_row_layout.addWidget(self.progress, 1)
-        status_row_layout.addWidget(self.status, 2)
-
         root_layout = QtWidgets.QVBoxLayout(self)
         root_layout.addWidget(root_splitter, 1)
-        root_layout.addLayout(status_row_layout)
 
         # Apply specific stylesheets.
         self.setStyleSheet("""
@@ -243,46 +246,93 @@ class SegmentationPanel(QtWidgets.QWidget):
     def _build_params_box(self) -> QtWidgets.QGroupBox:
         """Creates and populates the GroupBox containing all pipeline parameters."""
         grp = QtWidgets.QGroupBox("Parameters")
-        form = QtWidgets.QFormLayout(grp)
 
-        # Define all parameter widgets
+        # --- Main Layouts ---
+        # Root vertical layout for the group box
+        root_layout = QtWidgets.QVBoxLayout(grp)
+        # Form layout for organizing labels and widget groups
+        form = QtWidgets.QFormLayout()
+        form.setRowWrapPolicy(QtWidgets.QFormLayout.RowWrapPolicy.WrapAllRows)
+        form.setLabelAlignment(Qt.AlignRight)
+        root_layout.addLayout(form)
+
+        # --- Helper for creating separators ---
+        def create_separator() -> QtWidgets.QFrame:
+            line = QtWidgets.QFrame()
+            line.setFrameShape(QtWidgets.QFrame.Shape.HLine)
+            line.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
+            line.setStyleSheet("background-color: #555;")
+            return line
+
+        # --- Define all parameter widgets ---
         self.spin_win_conn = QtWidgets.QSpinBox(maximum=100, value=8)
         self.cmb_win_mode = QtWidgets.QComboBox()
         self.cmb_win_mode.addItems(["Count", "Percentage", "Random"])
         self.spin_win_val = QtWidgets.QSpinBox(maximum=20, value=2)
+
         self.spin_door_conn = QtWidgets.QSpinBox(maximum=100, value=8)
         self.cmb_door_mode = QtWidgets.QComboBox()
         self.cmb_door_mode.addItems(["Count", "Percentage", "Random"])
         self.spin_door_val = QtWidgets.QSpinBox(maximum=20, value=1)
+
         self.cmb_floor_mode = QtWidgets.QComboBox()
         self.cmb_floor_mode.addItems(["Auto Detect", "Exact Count"])
         self.spin_floor_inc = QtWidgets.QSpinBox(minimum=-99, maximum=99, value=0)
+
         self.cmb_col_mode = QtWidgets.QComboBox()
         self.cmb_col_mode.addItems(["Auto Detect", "Exact Count"])
         self.spin_col_inc = QtWidgets.QSpinBox(minimum=-99, maximum=99, value=0)
+
         self.chk_auto_crop = QtWidgets.QCheckBox("Auto Crop", checked=True)
         self.chk_empty_wall = QtWidgets.QCheckBox("Empty to Wall", checked=True)
         self.chk_variations = QtWidgets.QCheckBox("Enable Variations", checked=True)
+
         self.cmb_model = QtWidgets.QComboBox()
         self.cmb_model.addItems(["o3", "gpt-4.1", "o4-mini"])
 
-        # Add widgets to the form layout
-        form.addRow("<b>Window Connectivity</b>", self.spin_win_conn)
-        form.addRow("Window Mode", self.cmb_win_mode)
-        form.addRow("Window Value", self.spin_win_val)
-        form.addRow("<b>Door Connectivity</b>", self.spin_door_conn)
-        form.addRow("Door Mode", self.cmb_door_mode)
-        form.addRow("Door Value", self.spin_door_val)
-        form.addRow("<b>Floor Mode</b>", self.cmb_floor_mode)
-        form.addRow("Floor Δ", self.spin_floor_inc)
-        form.addRow("<b>Column Mode</b>", self.cmb_col_mode)
-        form.addRow("Column Δ", self.spin_col_inc)
-        toggles = QtWidgets.QHBoxLayout()
-        toggles.addWidget(self.chk_auto_crop)
-        toggles.addWidget(self.chk_empty_wall)
-        toggles.addWidget(self.chk_variations)
-        form.addRow(toggles)
-        form.addRow("OpenAI Model", self.cmb_model)
+        # --- Assemble Window Parameters ---
+        win_group = QtWidgets.QVBoxLayout()
+        win_group.setSpacing(4)
+        win_group.addWidget(self.spin_win_conn)
+        win_group.addWidget(self.cmb_win_mode)
+        win_group.addWidget(self.spin_win_val)
+        form.addRow("<b>Window</b> (Connectivity, Mode, Value)", win_group)
+        form.addRow(create_separator())
+
+        # --- Assemble Door Parameters ---
+        door_group = QtWidgets.QVBoxLayout()
+        door_group.setSpacing(4)
+        door_group.addWidget(self.spin_door_conn)
+        door_group.addWidget(self.cmb_door_mode)
+        door_group.addWidget(self.spin_door_val)
+        form.addRow("<b>Door</b> (Connectivity, Mode, Value)", door_group)
+        form.addRow(create_separator())
+
+        # --- Assemble Floor & Column Parameters ---
+        floor_col_group = QtWidgets.QHBoxLayout()
+        floor_box = QtWidgets.QVBoxLayout()
+        floor_box.addWidget(QtWidgets.QLabel("<b>Floors</b>"))
+        floor_box.addWidget(self.cmb_floor_mode)
+        floor_box.addWidget(self.spin_floor_inc)
+        col_box = QtWidgets.QVBoxLayout()
+        col_box.addWidget(QtWidgets.QLabel("<b>Columns</b>"))
+        col_box.addWidget(self.cmb_col_mode)
+        col_box.addWidget(self.spin_col_inc)
+        floor_col_group.addLayout(floor_box)
+        floor_col_group.addLayout(col_box)
+        form.addRow("Grid (Mode, Δ)", floor_col_group)
+        form.addRow(create_separator())
+
+        # --- Assemble Toggles & Model ---
+        toggles_group = QtWidgets.QVBoxLayout()
+        toggles_row = QtWidgets.QHBoxLayout()
+        toggles_row.addWidget(self.chk_auto_crop)
+        toggles_row.addWidget(self.chk_empty_wall)
+        toggles_row.addWidget(self.chk_variations)
+        toggles_group.addLayout(toggles_row)
+        toggles_group.addWidget(self.cmb_model)
+        form.addRow("Options", toggles_group)
+
         return grp
 
     def _connect_signals(self) -> None:
@@ -296,15 +346,27 @@ class SegmentationPanel(QtWidgets.QWidget):
 
     @Slot()
     def _on_send_rigid(self):
-        """Emits the rigid pattern for the sandbox editor."""
+        """Emits the rigid pattern for the sandbox editor after sanitizing it."""
         if self._rigid_text:
-            self.patternGenerated.emit(self._rigid_text, "sandbox")
+            sanitized_text = _sanitize_rigid_for_sandbox(self._rigid_text)
+
+            # Reverse the order of the floors (lines)
+            reversed_lines = sanitized_text.splitlines()
+            reversed_lines.reverse()
+            final_text = "\n".join(reversed_lines)
+
+            self.patternGenerated.emit(final_text, "Rigid")
 
     @Slot()
     def _on_send_rep(self):
         """Emits the repeatable pattern for the structured editor."""
         if self._final_repeatable_text:
-            self.patternGenerated.emit(self._final_repeatable_text, "structured")
+            # Reverse the order of the floors (lines)
+            reversed_lines = self._final_repeatable_text.splitlines()
+            reversed_lines.reverse()
+            final_text = "\n".join(reversed_lines)
+
+            self.patternGenerated.emit(final_text, "Repeatable")
 
     @Slot(str)
     def on_image_loaded(self, path: str) -> None:
@@ -390,7 +452,6 @@ class SegmentationPanel(QtWidgets.QWidget):
             self.current_thread.deleteLater()
             self.current_thread = None
         self._update_ui_state()
-
 
     def _set_busy_state(self, message: str) -> None:
         """Puts the UI into a busy/locked state while a thread is running."""

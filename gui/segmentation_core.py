@@ -27,6 +27,7 @@ from PySide6.QtCore import QBuffer, QByteArray, QIODevice, Qt, Signal
 # =========================================================================== #
 
 BASE_URL = "https://api.dev.atlas.design"
+#BASE_URL = "https://api.sandbox.atlas.design"
 
 
 def call_symbolic_image(image_bytes: bytes, filename: str) -> bytes:
@@ -191,6 +192,42 @@ def fix_facade_expression(expr: str) -> str:
             cleaned_lines.append(" ".join(groups))  # Use a single space as separator
     return "\n".join(cleaned_lines)
 
+
+def _sanitize_rigid_for_sandbox( text: str) -> str:
+    """
+    Cleans and reformats a raw rigid expression for the sandbox editor.
+
+    This performs several actions:
+    1. Unifies all modules on a line into a single `[...]` group.
+    2. Ensures all module names are capitalized.
+    3. Appends "00" to module names that lack a number.
+    4. Uses spaces as separators.
+    """
+    processed_lines = []
+    for line in text.strip().splitlines():
+        # 1. Find all individual module names on the current line.
+        # This regex extracts the content from within each `[...]`.
+        modules_on_line = re.findall(r'\[([^,\]]+)\]', line)
+
+        sanitized_modules = []
+        for module in modules_on_line:
+            # 2. Capitalize the first letter.
+            sanitized_module = module.strip().capitalize()
+
+            # 3. Check if the module name ends with a number. If not, add "00".
+            if not re.search(r'\d+$', sanitized_module):
+                sanitized_module += "00"
+
+            sanitized_modules.append(sanitized_module)
+
+        # 4. If any modules were found, join them with spaces and wrap them
+        #    in a single pair of brackets for the final line.
+        if sanitized_modules:
+            final_line = f"[{'-'.join(sanitized_modules)}]"
+            processed_lines.append(final_line)
+
+    # Join all processed lines back together with newlines.
+    return "\n".join(processed_lines)
 
 # =========================================================================== #
 # 3.  Worker Threads

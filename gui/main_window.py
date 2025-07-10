@@ -103,14 +103,10 @@ APP_STYLESHEET = """
         font-family: Consolas, "Courier New", monospace;
     }
     QSpinBox, QDoubleSpinBox, QComboBox {
-        background-color: #4a4a4a;
-        color: #f0f0f0;
-        border: 1px solid #666;
-        padding: 3px;
+        background-color: #4a4a4a; /* Match other inputs */
+
     }
-    QComboBox::drop-down {
-        border: none;
-    }
+  
     QSplitter::handle {
         background: #5a5a5a;
     }
@@ -204,8 +200,8 @@ class PatternEditorView(QWidget):
         toolbar.addAction(self.act_sandbox)
 
         # Connect buttons to the set_mode method of the single PatternArea
-        self.act_structured.triggered.connect(lambda: self.set_editor_mode("repeatable"))
-        self.act_sandbox.triggered.connect(lambda: self.set_editor_mode("rigid"))
+        self.act_structured.triggered.connect(lambda: self.set_editor_mode("Repeatable"))
+        self.act_sandbox.triggered.connect(lambda: self.set_editor_mode("Rigid"))
 
         # Use a group to manage the checked state
         action_group = QActionGroup(self)
@@ -218,12 +214,12 @@ class PatternEditorView(QWidget):
     def set_editor_mode(self, mode: str):
         """Toggles the canvas mode and updates the UI to reflect it."""
         self.pattern_area.set_mode(mode)
-        self.convert_button.setVisible(mode == "sandbox")
+        self.convert_button.setVisible(mode == "Rigid")
 
         # Update the toolbar to reflect the current mode
-        if mode == "structured":
+        if mode == "Repeatable":
             self.act_structured.setChecked(True)
-        else:  # "sandbox"
+        else:  # "Rigid"
             self.act_sandbox.setChecked(True)
 
     @Slot()
@@ -243,16 +239,16 @@ class PatternEditorView(QWidget):
     def _on_conversion_success(self, structured_pattern: str):
         self.load_pattern(structured_pattern)
         # Find the toolbar action and check it to switch the mode visually
-        self.set_editor_mode("repeatable")
+        self.set_editor_mode("Repeatable")
         for action in self.findChildren(QToolBar)[0].actions():
-            if action.text() == "repeatable": action.setChecked(True)
+            if action.text() == "Repeatable": action.setChecked(True)
         self.convert_button.setEnabled(True);
         self.convert_button.setText("➤ Convert to Structured Pattern")
 
     @Slot(str)
     def load_pattern(self, pattern_str: str):
         try:
-            self.set_editor_mode("repeatable")  # Always switch to structured mode on load
+            # The mode is now set *before* this method is called.
             self.pattern_area.load_from_string(pattern_str, library=self._library)
             self._input_panel._editor.setPlainText(pattern_str)
         except Exception as e:
