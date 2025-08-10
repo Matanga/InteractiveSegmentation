@@ -1,8 +1,7 @@
 """building_grammar.core
 ~~~~~~~~~~~~~~~~~~~~~
 Core domain model, parser and validator for the Interactive Building Grammar – Pattern Editor (IBG‑PE).
-This module is *framework‑agnostic* and contains **no PySide code** – satisfying the
-separation‑of‑concerns principle stated in the PRD (§3).
+This module is *framework‑agnostic*
 
 Exports
 -------
@@ -179,12 +178,10 @@ def _split_line(line: str) -> Sequence[str]:
         raise GrammarError(f"Unexpected characters outside groups: '{line}'")
     return tokens
 
-
 def parse_line(line: str) -> List[Group]:
     """Parse a *single floor* pattern line."""
     tokens = _split_line(line.strip())
     return [_parse_group(tok.strip()) for tok in tokens]
-
 
 def parse(pattern_str: str) -> Pattern:
     """Parse full *pattern_str* into :class:`Pattern`.
@@ -200,7 +197,6 @@ def parse(pattern_str: str) -> Pattern:
 
     floors = [parse_line(ln) for ln in lines]
     return Pattern(floors=floors)
-
 
 def validate(pattern_str: str) -> None:
     """Validate *pattern_str* by attempting to parse it."""
