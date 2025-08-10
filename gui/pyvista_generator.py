@@ -23,7 +23,6 @@ class PyVistaBuildingGenerator:
             self.textures[module_name] = pyvista.Texture(str(filepath))
         return self.textures[module_name]
 
-
     def create_module_mesh(self, module_name: str) -> pyvista.DataSet:
         """
         Creates a single, vertical, untextured 3D quad for a given module.
@@ -45,11 +44,6 @@ class PyVistaBuildingGenerator:
 
         return mesh
 
-
-
-    # =====================================================================
-    # --- NEW METHOD FOR STEP 2 ---
-    # =====================================================================
     def create_facade(self, facade_blueprint: dict) -> List[Tuple[pyvista.DataSet, pyvista.Texture]]:
         """
         Assembles a full, flat facade from a blueprint.
@@ -77,3 +71,28 @@ class PyVistaBuildingGenerator:
                 facade_components.append((module_mesh, texture))
 
         return facade_components
+
+    def create_roof(self, width: float, depth: float) -> Tuple[pyvista.DataSet, pyvista.Texture]:
+        """
+        Creates a single, flat roof mesh and its texture.
+
+        Args:
+            width: The width of the roof (along the X-axis).
+            depth: The depth of the roof (along the Y-axis).
+
+        Returns:
+            A tuple containing the roof mesh and the 'Wall00' texture.
+        """
+        # 1. Create a horizontal plane for the roof's geometry.
+        #    It's created at the origin; we will move it into place later.
+        roof_mesh = pyvista.Plane(
+            center=(0, 0, 0),
+            i_size=width,
+            j_size=depth,
+        )
+
+        # 2. Get the default 'Wall00' texture.
+        roof_texture = self._get_texture("Wall00")
+
+
+        return roof_mesh, roof_texture
