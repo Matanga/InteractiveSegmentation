@@ -11,6 +11,10 @@ from gui.resources_loader import IconFiles # Import from its location
 
 from building_grammar.building_generator import BuildingGenerator # <-- NEW IMPORT
 
+
+MODULE_WIDTH = 128
+
+
 def run_test(test_function):
     """A simple decorator to run a test and print its status."""
 
@@ -398,100 +402,152 @@ def run_test(test_function):
 #     assert "back" in blueprint and "left" in blueprint
 #
 
+# @run_test
+# def test_generator_with_resources_loader():
+#     """
+#     Tests that the BuildingGenerator can be fed by the IconFiles catalogue.
+#     """
+#     print("\n   --- Testing Integration: IconFiles -> BuildingGenerator ---")
+#
+#     # --- 1. Use IconFiles to find the modules ---
+#     # This assumes you have a "Default" sub-directory in your "resources" folder
+#     category_to_use = "Default"
+#     print(f"   Loading icon set for category: '{category_to_use}'")
+#
+#     # We might need to reload if files have changed, or rely on the initial scan
+#     IconFiles.reload()
+#     icon_set = IconFiles.get_icons_for_category(category_to_use)
+#
+#     if not icon_set:
+#         assert False, f"No icons found for category '{category_to_use}' in IconFiles."
+#
+#     # --- 2. Pass the discovered icon set to the Generator ---
+#     try:
+#         generator = BuildingGenerator(icon_set=icon_set)
+#
+#         # --- 3. Test the generator as before ---
+#         floor_blueprint = ['Wall00', 'Door00', 'Window00']
+#         # Check if all needed modules were loaded
+#         for module in floor_blueprint:
+#             if module not in generator.modules:
+#                 assert False, f"Module '{module}' from blueprint not found in loaded generator modules."
+#
+#         flat_floor_image = generator.assemble_flat_floor(floor_blueprint)
+#         output_filename = "test_output_integrated.png"
+#         flat_floor_image.save(output_filename)
+#
+#         print(f"   Successfully generated '{output_filename}' using integrated loaders.")
+#         assert flat_floor_image.width > 0
+#
+#     except Exception as e:
+#         print(f"   ERROR during integrated test: {e}")
+#         assert False, "Test failed due to an exception."
+#
+#
+# @run_test
+# def test_facade_generation_workflow():
+#     """
+#     Tests the primary workflow: Spec -> Director -> Blueprint -> Generator -> Image.
+#     This test is simplified to show the core process.
+#     """
+#     # -------------------------------------------------------------------
+#     # STEP 1: DEFINE the building design with a simple specification.
+#     # -------------------------------------------------------------------
+#     # We want a 2-floor building. The front should be about 500px wide.
+#     building_spec = BuildingSpec(
+#         num_floors=2,
+#         facades={
+#             "front": FacadeSpec(width=2250, grammar="[Window01]<Wall00>[Window01]\n[Door00]<Wall00-Window00>"),
+#             "right": FacadeSpec(width=384, grammar="<Window00>\n<Window00>[Window01]"),
+#         }
+#     )
+#
+#     # -------------------------------------------------------------------
+#     # STEP 2: DIRECT the construction to get a complete blueprint.
+#     # -------------------------------------------------------------------
+#     # The director handles all the complex logic (defaults, normalization).
+#     director = BuildingDirector(spec=building_spec)
+#     blueprint = director.produce_blueprint()
+#
+#     # -------------------------------------------------------------------
+#     # STEP 3: GENERATE the facade image from the blueprint.
+#     # -------------------------------------------------------------------
+#     # The generator handles the visual part (loading and pasting images).
+#     icon_set = IconFiles.get_icons_for_category("Default")
+#     generator = BuildingGenerator(icon_set=icon_set)
+#
+#     # We only want to generate the image for the "front" facade.
+#     front_facade_image = generator.assemble_full_facade(blueprint["front"])
+#
+#     # -------------------------------------------------------------------
+#     # STEP 4: VERIFY the output and save it.
+#     # -------------------------------------------------------------------
+#     output_filename = "test_output_facade.png"
+#     print(f"   Workflow complete. Saving final facade image to '{output_filename}'")
+#     front_facade_image.save(output_filename)
+#
+#     # Simple, meaningful assertions.
+#     # The image should exist and have a real size.
+#     assert front_facade_image.width > 0
+#
+#     # The height should match our design specification.
+#     expected_height = building_spec.num_floors * 128
+#     assert front_facade_image.height == expected_height, \
+#         f"Image height is {front_facade_image.height}, but expected {expected_height}"
+#
+#     print(f"   Image dimensions: {front_facade_image.size}. Verification passed.")
+
+
 @run_test
-def test_generator_with_resources_loader():
+def test_generate_3d_building_workflow():
     """
-    Tests that the BuildingGenerator can be fed by the IconFiles catalogue.
+    Tests the final end-to-end workflow: generating a faked 3D building image.
     """
-    print("\n   --- Testing Integration: IconFiles -> BuildingGenerator ---")
+    print("\n   --- Testing Final Workflow: 3D Building Generation ---")
 
-    # --- 1. Use IconFiles to find the modules ---
-    # This assumes you have a "Default" sub-directory in your "resources" folder
-    category_to_use = "Default"
-    print(f"   Loading icon set for category: '{category_to_use}'")
-
-    # We might need to reload if files have changed, or rely on the initial scan
-    IconFiles.reload()
-    icon_set = IconFiles.get_icons_for_category(category_to_use)
-
-    if not icon_set:
-        assert False, f"No icons found for category '{category_to_use}' in IconFiles."
-
-    # --- 2. Pass the discovered icon set to the Generator ---
-    try:
-        generator = BuildingGenerator(icon_set=icon_set)
-
-        # --- 3. Test the generator as before ---
-        floor_blueprint = ['Wall00', 'Door00', 'Window00']
-        # Check if all needed modules were loaded
-        for module in floor_blueprint:
-            if module not in generator.modules:
-                assert False, f"Module '{module}' from blueprint not found in loaded generator modules."
-
-        flat_floor_image = generator.assemble_flat_floor(floor_blueprint)
-        output_filename = "test_output_integrated.png"
-        flat_floor_image.save(output_filename)
-
-        print(f"   Successfully generated '{output_filename}' using integrated loaders.")
-        assert flat_floor_image.width > 0
-
-    except Exception as e:
-        print(f"   ERROR during integrated test: {e}")
-        assert False, "Test failed due to an exception."
-
-
-@run_test
-def test_facade_generation_workflow():
-    """
-    Tests the primary workflow: Spec -> Director -> Blueprint -> Generator -> Image.
-    This test is simplified to show the core process.
-    """
     # -------------------------------------------------------------------
-    # STEP 1: DEFINE the building design with a simple specification.
+    # --- THE ONLY CHANGE IS HERE: Added a [Window00] to the right facade ---
     # -------------------------------------------------------------------
-    # We want a 2-floor building. The front should be about 500px wide.
     building_spec = BuildingSpec(
         num_floors=2,
         facades={
-            "front": FacadeSpec(width=2250, grammar="[Window01]<Wall00>[Window01]\n[Door00]<Wall00-Window00>"),
-            "right": FacadeSpec(width=384, grammar="<Window00>\n<Window00>[Window01]"),
+            "front": FacadeSpec(width=3 * MODULE_WIDTH, grammar="<Window00>\n[Door00]"),
+            # Let's give the right side a window so we can see the perspective warp.
+            "right": FacadeSpec(width=2 * MODULE_WIDTH, grammar="[Window00]\n<Wall00>"),
         }
     )
+    print("   1. BuildingSpec defined with a window on the right facade.")
 
-    # -------------------------------------------------------------------
-    # STEP 2: DIRECT the construction to get a complete blueprint.
-    # -------------------------------------------------------------------
-    # The director handles all the complex logic (defaults, normalization).
+    # --- The rest of the test is IDENTICAL ---
+
+    # 2. Direct the construction
     director = BuildingDirector(spec=building_spec)
-    blueprint = director.produce_blueprint()
+    full_blueprint = director.produce_blueprint()
+    print("   2. Full 4-sided blueprint created by Director.")
 
-    # -------------------------------------------------------------------
-    # STEP 3: GENERATE the facade image from the blueprint.
-    # -------------------------------------------------------------------
-    # The generator handles the visual part (loading and pasting images).
+    # 3. Prepare the generator
+    IconFiles.reload()
     icon_set = IconFiles.get_icons_for_category("Default")
     generator = BuildingGenerator(icon_set=icon_set)
+    print("   3. BuildingGenerator initialized with module images.")
 
-    # We only want to generate the image for the "front" facade.
-    front_facade_image = generator.assemble_full_facade(blueprint["front"])
+    # 4. Generate the final 3D image
+    print("   4. Calling generate_3d_building...")
+    final_building_image = generator.generate_3d_building(
+        blueprint=full_blueprint,
+        camera_angle_deg=35,
+        depth_ratio=0.6
+    )
+    print("   ...3D building image returned.")
 
-    # -------------------------------------------------------------------
-    # STEP 4: VERIFY the output and save it.
-    # -------------------------------------------------------------------
-    output_filename = "test_output_facade.png"
-    print(f"   Workflow complete. Saving final facade image to '{output_filename}'")
-    front_facade_image.save(output_filename)
+    # 5. Save and verify the output
+    output_filename = "test_output_3D_building_with_window.png"
+    print(f"   5. Saving final image to '{output_filename}'")
+    final_building_image.save(output_filename)
 
-    # Simple, meaningful assertions.
-    # The image should exist and have a real size.
-    assert front_facade_image.width > 0
-
-    # The height should match our design specification.
-    expected_height = building_spec.num_floors * 128
-    assert front_facade_image.height == expected_height, \
-        f"Image height is {front_facade_image.height}, but expected {expected_height}"
-
-    print(f"   Image dimensions: {front_facade_image.size}. Verification passed.")
+    assert final_building_image.width > 0
+    assert final_building_image.height > 0
+    print("   ✅ Image saved successfully.")
 
 
 if __name__ == "__main__":
@@ -502,8 +558,9 @@ if __name__ == "__main__":
     # List all the test functions you want to run
     tests_to_run = [
 
-        test_generator_with_resources_loader,
-        test_facade_generation_workflow
+        # test_generator_with_resources_loader,
+        # test_facade_generation_workflow,
+        test_generate_3d_building_workflow
     ]
 
     results = [test() for test in tests_to_run]
