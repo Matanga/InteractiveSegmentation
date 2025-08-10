@@ -10,6 +10,9 @@ class OrbitCameraController(DirectObject):
     """
 
     def __init__(self, showbase, camera: NodePath, target: NodePath):
+
+        DirectObject.__init__(self)
+
         self.showbase = showbase
         self.camera = camera
         self.target = target  # The NodePath the camera will orbit around
