@@ -41,7 +41,7 @@ class PyVistaBuildingGenerator:
         mesh.rotate_x(90, inplace=True)
 
         # 3. Translate the now-vertical mesh up so its bottom edge is on the Z=0 plane.
-        mesh.translate((0, 0, MODULE_HEIGHT / 2), inplace=True)
+        mesh.translate((MODULE_WIDTH / 2, 0, MODULE_HEIGHT / 2), inplace=True)
 
         return mesh
 
@@ -65,11 +65,10 @@ class PyVistaBuildingGenerator:
                 module_mesh = self.create_module_mesh(module_name)
 
                 # 2. Calculate its final position in the facade
-                x_pos = (module_idx - (len(modules) - 1) / 2.0) * MODULE_WIDTH
-                y_pos = 0  # It's a flat facade
+                x_pos = module_idx * MODULE_WIDTH
+                y_pos = 0
                 z_pos = floor_idx * MODULE_HEIGHT
 
-                # 3. Move the mesh to its final position
                 module_mesh.translate((x_pos, y_pos, z_pos), inplace=True)
 
                 # 4. Get the corresponding texture

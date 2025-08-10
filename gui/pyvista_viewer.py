@@ -3,7 +3,6 @@ import pyvista
 
 class PyVistaViewerWidget(QtInteractor):
     """A reusable QWidget for displaying a PyVista 3D scene."""
-
     def __init__(self, parent=None):
         super().__init__(parent)
         self._managed_actors: dict = {}
@@ -18,15 +17,10 @@ class PyVistaViewerWidget(QtInteractor):
         self.camera.position = (0, -1000, 500)
         self.camera.focal_point = (0, 0, 500)
 
-    # ===================================================================
-    # --- THE FIX IS HERE: Renamed 'add_actor' to 'add_managed_actor' ---
-    # ===================================================================
     def add_managed_actor(self, actor_name: str, mesh: pyvista.DataSet, texture: pyvista.Texture):
         """Adds a mesh with a texture to the scene and manages it."""
         if actor_name in self._managed_actors:
-            # We must use self.remove_actor() which is the parent method
             self.remove_actor(self._managed_actors[actor_name])
-
         actor = self.add_mesh(mesh, texture=texture, name=actor_name, culling='back')
         self._managed_actors[actor_name] = actor
 
