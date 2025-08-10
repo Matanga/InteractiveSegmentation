@@ -49,7 +49,6 @@ class BuildingViewerApp(QWidget):
         blueprint = director.produce_blueprint()
 
         # 2. Clear the viewer of any old models
-        self.viewer.clear_scene()
 
         # 3. Calculate the dimensions needed for placement
         front_bp = blueprint.get("front", {})
@@ -62,59 +61,68 @@ class BuildingViewerApp(QWidget):
         y_offset = -right_width_px / 2
         centering_translation = (x_offset, y_offset, 0)
 
+        self.viewer.suppress_rendering = True
 
-        # --- Process, Transform, and Place ALL Four Facades ---
-        # FRONT
-        if front_bp:
-            parts = self.generator.create_facade(front_bp)
-            for i, (mesh, texture) in enumerate(parts):
-                mesh.translate(centering_translation, inplace=True)
-                self.viewer.add_managed_actor(f"front_module_{i}", mesh, texture)
+        try:
 
-        # RIGHT
-        if right_bp:
-            parts = self.generator.create_facade(right_bp)
-            for i, (mesh, texture) in enumerate(parts):
-                mesh.rotate_z(90, inplace=True)
-                mesh.translate((front_width_px, 0, 0), inplace=True)
-                mesh.translate(centering_translation, inplace=True) # Apply centering
-                self.viewer.add_managed_actor(f"right_module_{i}", mesh, texture)
+            self.viewer.clear_scene()
 
-        # BACK
-        back_bp = blueprint.get("back", {})
-        if back_bp:
-            parts = self.generator.create_facade(back_bp)
-            for i, (mesh, texture) in enumerate(parts):
-                mesh.rotate_z(180, inplace=True)
-                mesh.translate((front_width_px, right_width_px, 0), inplace=True)
-                mesh.translate(centering_translation, inplace=True) # Apply centering
-                self.viewer.add_managed_actor(f"back_module_{i}", mesh, texture)
+            # --- Process, Transform, and Place ALL Four Facades ---
+            # FRONT
+            if front_bp:
+                parts = self.generator.create_facade(front_bp)
+                for i, (mesh, texture) in enumerate(parts):
+                    mesh.translate(centering_translation, inplace=True)
+                    self.viewer.add_managed_actor(f"front_module_{i}", mesh, texture)
 
-        # LEFT
-        left_bp = blueprint.get("left", {})
-        if left_bp:
-            parts = self.generator.create_facade(left_bp)
-            for i, (mesh, texture) in enumerate(parts):
-                mesh.rotate_z(-90, inplace=True)
-                mesh.translate((0, right_width_px, 0), inplace=True)
-                mesh.translate(centering_translation, inplace=True) # Apply centering
-                self.viewer.add_managed_actor(f"left_module_{i}", mesh, texture)
+            # RIGHT
+            if right_bp:
+                parts = self.generator.create_facade(right_bp)
+                for i, (mesh, texture) in enumerate(parts):
+                    mesh.rotate_z(90, inplace=True)
+                    mesh.translate((front_width_px, 0, 0), inplace=True)
+                    mesh.translate(centering_translation, inplace=True) # Apply centering
+                    self.viewer.add_managed_actor(f"right_module_{i}", mesh, texture)
 
-        if front_width_px > 0 and right_width_px > 0:
-            # 1. Call our new generator method to get the roof parts
-            roof_mesh, roof_texture = self.generator.create_roof(front_width_px, right_width_px)
+            # BACK
+            back_bp = blueprint.get("back", {})
+            if back_bp:
+                parts = self.generator.create_facade(back_bp)
+                for i, (mesh, texture) in enumerate(parts):
+                    mesh.rotate_z(180, inplace=True)
+                    mesh.translate((front_width_px, right_width_px, 0), inplace=True)
+                    mesh.translate(centering_translation, inplace=True) # Apply centering
+                    self.viewer.add_managed_actor(f"back_module_{i}", mesh, texture)
 
-            # 2. Translate the roof to its final position
-            #    It needs to be at the top of the building, and its center
-            #    needs to align with the center of the building's footprint.
-            center_x = front_width_px / 2
-            center_y = right_width_px / 2
-            roof_mesh.translate((center_x, center_y, building_height_px), inplace=True)
-            roof_mesh.translate(centering_translation, inplace=True) # Apply centering
+            # LEFT
+            left_bp = blueprint.get("left", {})
+            if left_bp:
+                parts = self.generator.create_facade(left_bp)
+                for i, (mesh, texture) in enumerate(parts):
+                    mesh.rotate_z(-90, inplace=True)
+                    mesh.translate((0, right_width_px, 0), inplace=True)
+                    mesh.translate(centering_translation, inplace=True) # Apply centering
+                    self.viewer.add_managed_actor(f"left_module_{i}", mesh, texture)
 
-            # 3. Add the roof to the scene
-            self.viewer.add_managed_actor("roof", roof_mesh, roof_texture)
+            if front_width_px > 0 and right_width_px > 0:
+                # 1. Call our new generator method to get the roof parts
+                roof_mesh, roof_texture = self.generator.create_roof(front_width_px, right_width_px)
 
+                # 2. Translate the roof to its final position
+                #    It needs to be at the top of the building, and its center
+                #    needs to align with the center of the building's footprint.
+                center_x = front_width_px / 2
+                center_y = right_width_px / 2
+                roof_mesh.translate((center_x, center_y, building_height_px), inplace=True)
+                roof_mesh.translate(centering_translation, inplace=True) # Apply centering
+
+                # 3. Add the roof to the scene
+                self.viewer.add_managed_actor("roof", roof_mesh, roof_texture)
+
+        finally:
+            # 2c. This is GUARANTEED to run. Re-enable rendering, which
+            #     triggers a single, final redraw of the completed scene.
+            self.viewer.suppress_rendering = False
 
         # 4. Adjust the camera to view the new building
         self.viewer.reset_camera()
