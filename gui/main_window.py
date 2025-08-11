@@ -3,21 +3,24 @@
 import sys
 from pathlib import Path
 
-from functools import partial
-
 # --- Component Imports ---
 from segmentation_panel import SegmentationPanel, RepeatableThread  # Import the thread
 from module_library import ModuleLibrary
 from panels import PatternInputPanel, PatternOutputPanel
 from pattern_area import PatternArea
 
-from PySide6.QtCore import Qt, Slot, QSize
+from PySide6.QtCore import Qt, Slot
 from PySide6.QtGui import QAction, QActionGroup, QPixmap
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QScrollArea, QStackedWidget, QToolBar,
-    QVBoxLayout, QWidget, QGroupBox, QSplitter, QPushButton, QLabel, QSizePolicy,
-    QHBoxLayout
+    QVBoxLayout, QWidget, QGroupBox, QSplitter, QPushButton, QLabel, QSizePolicy
 )
+
+
+from gui.pyvista_building_viewer import BuildingViewerApp
+
+
+
 
 # ... (APP_STYLESHEET remains the same)
 APP_STYLESHEET = """
@@ -164,10 +167,22 @@ class PatternEditorView(QWidget):
         self.convert_button.hide()
         canvas_layout.addWidget(self.convert_button)
 
+        # >>> NEW: 3D Viewer on the right
+        viewer_box = QGroupBox("3D Preview")
+        viewer_layout = QVBoxLayout(viewer_box)
+        self.building_viewer = BuildingViewerApp()
+        viewer_layout.addWidget(self.building_viewer)
+
+        # Optional: show something by default
+        self.building_viewer.generate_building_1_kit()
+
+
         visual_splitter = QSplitter(Qt.Horizontal);
         visual_splitter.addWidget(library_box);
         visual_splitter.addWidget(canvas_box);
-        visual_splitter.setSizes([250, 750])
+        visual_splitter.addWidget(viewer_box)  # <<< add viewer as the right-most pane
+
+        visual_splitter.setSizes([250, 750, 600])
         text_splitter = QSplitter(Qt.Horizontal);
         text_splitter.addWidget(self._input_panel);
         text_splitter.addWidget(self._output_panel)
@@ -198,6 +213,17 @@ class PatternEditorView(QWidget):
         self.act_sandbox.setCheckable(True)
         toolbar.addAction(self.act_structured)
         toolbar.addAction(self.act_sandbox)
+
+        btn_kit = QAction("Preview: Kit", self)
+        btn_bill = QAction("Preview: Billboard", self)
+        toolbar.addSeparator()
+        toolbar.addAction(btn_kit)
+        toolbar.addAction(btn_bill)
+
+        btn_kit.triggered.connect(
+            lambda: getattr(self, "building_viewer", None) and self.building_viewer.generate_building_1_kit())
+        btn_bill.triggered.connect(
+            lambda: getattr(self, "building_viewer", None) and self.building_viewer.generate_building_1_billboard())
 
         # Connect buttons to the set_mode method of the single PatternArea
         self.act_structured.triggered.connect(lambda: self.set_editor_mode("Repeatable"))

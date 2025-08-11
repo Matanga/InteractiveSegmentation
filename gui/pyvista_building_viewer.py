@@ -222,6 +222,32 @@ class BuildingViewerApp(QWidget):
         self.viewer.reset_camera()
         print(f"--- Full Billboard building with {spec.num_floors} floors displayed successfully! ---")
 
+    def generate_building_1_kit(self):
+        """Creates a spec and displays it with the Kit-of-Parts method."""
+        spec = BuildingSpec(
+            num_floors=2,
+            facades={
+                "front": FacadeSpec(width=8 * MODULE_WIDTH, grammar="<Wall00>\n[Door00]<Window00>"),
+                "right": FacadeSpec(width=12 * MODULE_WIDTH, grammar="<Wall00>\n<Window00>")
+            }
+        )
+        self.display_building_kit_of_parts(spec)
+
+    def generate_building_1_billboard(self):
+        """Creates a randomized spec and displays it with the Billboard method."""
+        front_modules = random.randint(5, 12)
+        right_modules = random.randint(5, 12)
+        spec = BuildingSpec(
+            num_floors=random.randint(2, 12),
+            facades={
+                "front": FacadeSpec(width=front_modules * MODULE_WIDTH, grammar="<Wall00>\n[Door00]<Window00>"),
+                "right": FacadeSpec(width=right_modules * MODULE_WIDTH, grammar="<Wall00>\n<Window00>")
+            }
+        )
+        self.display_building_billboard(spec)
+
+
+
 class HostWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -270,7 +296,7 @@ class HostWindow(QMainWindow):
 
         # Create the spec using these new random widths
         spec = BuildingSpec(
-            num_floors=2,
+            num_floors=random.randint(2, 12),
             facades={
                 "front": FacadeSpec(width=front_modules * MODULE_WIDTH, grammar="<Wall00>\n[Door00]<Window00>"),
                 "right": FacadeSpec(width=right_modules * MODULE_WIDTH, grammar="<Wall00>\n<Window00>")
