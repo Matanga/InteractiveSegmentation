@@ -4,8 +4,6 @@ from typing import Dict, List, Tuple
 from pathlib import Path # Add Path import
 
 import math
-from .perspective import PerspectiveTransform
-
 
 # A type alias for our blueprint structure for clarity
 IconSet = Dict[str, Path]
@@ -167,54 +165,3 @@ class BuildingGenerator:
             current_y += floor_image.height
 
         return facade_canvas
-
-    # This is the main generation method. It will now work as intended.
-    def generate_3d_building(self, blueprint: Blueprint, camera_angle_deg: int = 30,
-                             depth_ratio: float = 0.5) -> Image.Image:
-        # --- 1. Generate all flat facades ---
-        flat_facades = {
-            side: self.assemble_full_facade(facade_blueprint)
-            for side, facade_blueprint in blueprint.items()
-        }
-        front_facade = flat_facades.get("front")
-        right_facade = flat_facades.get("right")
-        if not front_facade or not right_facade:
-            raise BuildError("Cannot generate 3D building without 'front' and 'right' facades.")
-
-        # --- 2. Define 3D Geometry ---
-        # (This part is simplified for clarity)
-        canvas_width = front_facade.width + int(right_facade.width * depth_ratio)
-        canvas_height = front_facade.height + int(right_facade.width * depth_ratio)
-        final_canvas = Image.new("RGBA", (canvas_width, canvas_height))
-
-        # Position the front facade
-        ff_w, ff_h = front_facade.size
-        ff_x, ff_y = 50, canvas_height - ff_h - 50
-        final_canvas.paste(front_facade, (ff_x, ff_y), front_facade)
-        front_corners = [(ff_x, ff_y), (ff_x + ff_w, ff_y), (ff_x + ff_w, ff_y + ff_h), (ff_x, ff_y + ff_h)]
-
-        # --- 3. Transform and Paste Right Facade ---
-        depth = right_facade.width * depth_ratio
-        angle_rad = math.radians(camera_angle_deg)
-
-        dx = depth * math.cos(angle_rad)
-        dy = depth * math.sin(angle_rad)
-
-        tr_corner = front_corners[1]  # Top-right
-        br_corner = front_corners[2]  # Bottom-right
-
-        # Define the target quadrilateral for the right facade
-        right_target_corners = [
-            tr_corner,
-            (tr_corner[0] + dx, tr_corner[1] - dy),
-            (br_corner[0] + dx, br_corner[1] - dy),
-            br_corner
-        ]
-
-        # Use our new perspective helper
-        transformer = PerspectiveTransform(target_corners=right_target_corners)
-        warped_right_facade, paste_pos = transformer.transform_image(right_facade)
-
-        final_canvas.paste(warped_right_facade, paste_pos, warped_right_facade)
-
-        return final_canvas

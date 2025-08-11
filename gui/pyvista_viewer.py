@@ -1,6 +1,8 @@
 from pyvistaqt import QtInteractor
 import pyvista
 from PySide6.QtCore import QTimer  # <-- Import QTimer
+import  numpy as np
+
 
 class PyVistaViewerWidget(QtInteractor):
     """A reusable QWidget for displaying a PyVista 3D scene."""
@@ -22,6 +24,7 @@ class PyVistaViewerWidget(QtInteractor):
         self.camera_stabilizer_timer.start(16)
         # ===================================================================
 
+        self._add_world_axes()
 
 
         self.setup_scene()
@@ -36,6 +39,34 @@ class PyVistaViewerWidget(QtInteractor):
         # self.camera.position = (0, -1000, 500)
         # self.camera.focal_point = (0, 0, 500)
 
+    def _add_world_axes(self):
+        """
+        Creates a visual gnomon with lines and labels for the world axes
+        along the edges of the grid.
+        """
+        grid_size = 4096
+        half_grid = grid_size / 2
+
+        # X-AXIS (RED)
+        points_x = np.array([[-half_grid, -half_grid, 0], [half_grid, -half_grid, 0]])
+        self.add_lines(points_x, color='red', width=5)
+
+        # Y-AXIS (GREEN)
+        points_y = np.array([[-half_grid, -half_grid, 0], [-half_grid, half_grid, 0]])
+        self.add_lines(points_y, color='green', width=5)
+
+        # ===================================================================
+        # --- THE FIX IS HERE ---
+        # ===================================================================
+        # Add labels at the positive ends of the axes with a smaller font
+        # and no point shape drawn at their location.
+        self.add_point_labels(
+            [[half_grid, -half_grid, 0], [-half_grid, half_grid, 0]],
+            ["X (Right)", "Y (Front)"],
+            font_size=18,  # <-- Reduced font size
+            shape=None,  # <-- Ensures no shape is drawn
+            # The 'point_size' argument has been REMOVED
+        )
 
     def _lock_camera_roll(self):
         """The callback function to stabilize the camera's orientation."""

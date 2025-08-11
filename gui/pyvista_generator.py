@@ -3,6 +3,8 @@ from typing import Dict, List, Tuple
 
 from gui.resources_loader import IconFiles
 
+from PIL import Image
+import  numpy as np
 MODULE_WIDTH=128
 MODULE_HEIGHT=128
 
@@ -96,3 +98,24 @@ class PyVistaBuildingGenerator:
 
 
         return roof_mesh, roof_texture
+
+    def create_facade_billboard(self, facade_image: Image.Image) -> Tuple[pyvista.DataSet, pyvista.Texture]:
+        """
+        Creates a single 3D plane (a billboard) from a pre-rendered facade image.
+        """
+        # 1. Create the 3D plane with the same dimensions as the image.
+        width, height = facade_image.size
+        mesh = pyvista.Plane(
+            center=(0, 0, 0),
+            i_size=width,
+            j_size=height,
+        )
+        mesh.rotate_x(-90, inplace=True)
+        mesh.translate((width / 2, 0, height / 2), inplace=True) # Set pivot to bottom-left
+
+        image_as_array = np.flipud(np.array(facade_image))
+
+        # 2. Create a PyVista Texture directly from the PIL Image object.
+        texture = pyvista.Texture(image_as_array)
+
+        return mesh, texture
