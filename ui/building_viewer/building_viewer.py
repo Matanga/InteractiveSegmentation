@@ -43,6 +43,7 @@ class BuildingViewerApp(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.viewer)
 
+
     # ------------------------------------------------------------------ #
     # Public API
     # ------------------------------------------------------------------ #
@@ -176,7 +177,11 @@ class BuildingViewerApp(QWidget):
                 mesh.rotate_z(-90, inplace=True)
                 mesh.translate((front_width_px, 0, 0), inplace=True)
                 mesh.translate(center, inplace=True)
-                self.viewer.add_managed_actor("right_billboard", mesh, tex)
+
+                meta = { "facade": "front"  }
+
+
+                self.viewer.add_managed_actor("right_billboard", mesh, tex,meta)
 
             # BACK (rotate 180; shift +X, -Y)
             if back_bp:

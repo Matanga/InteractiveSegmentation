@@ -6,10 +6,12 @@ import numpy as np
 import pyvista
 from pyvistaqt import QtInteractor
 from PySide6.QtCore import QTimer
+from PySide6.QtCore import Signal
 
 
 class PyVistaViewerWidget(QtInteractor):
     """A reusable QWidget for displaying a PyVista 3D scene."""
+    picked = Signal(dict)   # emits {'facade': 'front', 'floor': 2, ...}
 
     def __init__(
         self,
@@ -22,6 +24,12 @@ class PyVistaViewerWidget(QtInteractor):
     ):
         super().__init__(parent)
         self._managed_actors: Dict[str, pyvista.Actor] = {}
+
+        self._meta_by_actor = {}      # actor -> dict meta
+        self.enable_mesh_picking(self._on_mesh_pick, left_clicking=True, show_message=False,style='surface')
+
+        self._non_pickable_actors = set()
+
         self._grid_size = float(grid_size)
         self._show_world_axes = bool(show_world_axes)
         self._show_axis_labels = bool(show_axis_labels)
@@ -46,7 +54,9 @@ class PyVistaViewerWidget(QtInteractor):
             i_resolution=32,
             j_resolution=32,
         )
-        self.add_mesh(grid_mesh, style="wireframe", color="darkgrey")
+        grid_actor = self.add_mesh(grid_mesh, style="wireframe", color="darkgrey")
+        self._non_pickable_actors.add(grid_actor)
+        self._meta_by_actor[grid_actor] = {}
 
         if self._show_world_axes:
             self._add_world_axes()
@@ -65,19 +75,26 @@ class PyVistaViewerWidget(QtInteractor):
 
         # X axis (red) along -Y edge
         pts_x = np.array([[-half, -half, 0], [half, -half, 0]])
-        self.add_lines(pts_x, color="red", width=5)
+        axis_x_actor = self.add_lines(pts_x, color="red", width=5)
+        self._non_pickable_actors.add(axis_x_actor)
+        self._meta_by_actor[axis_x_actor] = {}
+
 
         # Y axis (green) along -X edge
         pts_y = np.array([[-half, -half, 0], [-half, half, 0]])
-        self.add_lines(pts_y, color="green", width=5)
+        axis_y_actor = self.add_lines(pts_y, color="green", width=5)
+        self._non_pickable_actors.add(axis_y_actor)
+        self._meta_by_actor[axis_y_actor] = {}
 
         if self._show_axis_labels:
-            self.add_point_labels(
+            label_actor =self.add_point_labels(
                 [[half, -half, 0], [-half, half, 0]],
                 ["X (Right)", "Y (Front)"],
                 font_size=18,
                 shape=None,
             )
+            self._non_pickable_actors.add(label_actor)
+            self._meta_by_actor[label_actor] = {}
 
     # ------------------------------------------------------------------ #
     # Camera helpers
@@ -105,16 +122,53 @@ class PyVistaViewerWidget(QtInteractor):
         actor_name: str,
         mesh: pyvista.DataSet,
         texture: Optional[pyvista.Texture] = None,
+        meta=None,
         *,
-        culling: str = "back",
+        culling: str = "back"
     ) -> None:
         """Add or replace a named actor and remember it for clearing."""
         # Remove existing actor with the same name
+
+
         if actor_name in self._managed_actors:
             self.remove_actor(self._managed_actors[actor_name])
 
         actor = self.add_mesh(mesh, texture=texture, name=actor_name, culling=culling)
         self._managed_actors[actor_name] = actor
+
+        # 1) keep python-side map
+        if meta is None:
+            meta = {}
+        self._meta_by_actor[actor] = meta
+
+        # 2) also write into the mesh’s field data for persistence
+        #    (pyvista will convert strings to vtkStringArray)
+        for k, v in meta.items():
+            try:
+                mesh.field_data[k] = np.array([str(v)])  # strings OK
+            except Exception:
+                pass
+        return actor
+
+    def _on_mesh_pick(self, mesh):
+        """
+        Pick callback that safely handles different actor types.
+        """
+        # Loop through all actors that have metadata associated with them.
+        for actor, meta in self._meta_by_actor.items():
+
+            # THE FIX IS HERE:
+            # First, check if the actor's mapper has a 'dataset' attribute.
+            # This will be False for label actors, preventing the crash.
+            if hasattr(actor.mapper, 'dataset'):
+
+                # If it has the attribute, we can now safely compare it.
+                if actor.mapper.dataset is mesh:
+                    print(f">>> MESH ACTOR PICKED: Emitting meta {meta}")
+                    self.picked.emit(meta)
+                    return
+
+
 
     def clear_scene(self):
         """Removes all managed actors from the scene."""

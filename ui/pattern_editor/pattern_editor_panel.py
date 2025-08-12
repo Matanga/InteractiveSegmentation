@@ -32,6 +32,8 @@ class PatternEditorPanel(QWidget):
         self.building_viewer = BuildingViewerApp()
         viewer_layout.addWidget(self.building_viewer)
 
+        self.building_viewer.viewer.picked.connect(self._on_view_pick)
+
 
         # Canvas box
         canvas_box = QGroupBox("Pattern Canvas")
@@ -85,6 +87,11 @@ class PatternEditorPanel(QWidget):
 
         # optional: preload a preview
         # self.building_viewer.generate_building_1_kit()
+
+    def _on_view_pick(self, info: dict):
+        # info: {'facade': 'front', 'floor': 2, 'module': 'Door01', ...}
+        print("Picked:", info)
+
 
     def _create_canvas_toolbar(self) -> QToolBar:
         tb = QToolBar("Canvas Mode")
