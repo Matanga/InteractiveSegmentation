@@ -27,7 +27,7 @@ from PySide6.QtWidgets import (
 )
 
 # —— core imports ————————————————————————————————————————————————
-from building_grammar.core import GrammarError, Pattern, parse  # :contentReference[oaicite:0]{index=0}
+from domain.grammar import GrammarError, Pattern, parse  # :contentReference[oaicite:0]{index=0}
 
 # ---------------------------------------------------------------------------
 

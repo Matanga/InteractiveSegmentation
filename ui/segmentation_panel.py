@@ -6,7 +6,7 @@ from typing import Any
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtCore import Qt, Signal, Slot
 
-from segmentation_core import (
+from services.facade_segmentation import (
     SymbolicThread, RigidThread, RepeatableThread, fix_facade_expression,
     _sanitize_rigid_for_sandbox
 )

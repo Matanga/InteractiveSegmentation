@@ -7,13 +7,14 @@ from PySide6.QtGui import QPixmap, QImage
 from PySide6.QtCore import Qt
 
 # Import our building system components
-from building_grammar.pattern_resolver import PatternResolver
-from building_grammar.building_generator import BuildingGenerator
-from gui.resources_loader import IconFiles
+from domain.pattern_resolver import PatternResolver
+from domain.building_generator_2d import BuildingGenerator2D
+from domain.building_spec import MODULE_WIDTH, MODULE_HEIGHT
+
+from services.resources_loader import IconFiles
 
 
-MODULE_HEIGHT= 128
-MODULE_WIDTH = 128
+
 
 # --- Helper function (can be in this file or a separate 'utils.py') ---
 def pil_to_qpixmap(pil_img):
@@ -30,31 +31,26 @@ def pil_to_qpixmap(pil_img):
 # =======================================================
 class FacadeEditorWidget(QWidget):
     # Change the base class to QWidget
-    def __init__(self, parent=None):
-        # Accept a parent argument, which is standard for QWidgets
+    def __init__(self, resolver: PatternResolver | None = None,
+                 generator: BuildingGenerator2D | None = None,
+                 icon_category: str = "Default",
+                 parent: QWidget | None = None):
         super().__init__(parent)
-
-        # --- 1. Initialize the Building System Backend ---
-        # It's better to pass the generator in, but for a self-contained
-        # example, we'll initialize it here.
         try:
-            icon_set = IconFiles.get_icons_for_category("Default")
+            icon_set = IconFiles.get_icons_for_category(icon_category)
             if not icon_set:
-                raise FileNotFoundError("Could not find 'Default' icon category.")
-            self.generator = BuildingGenerator(icon_set=icon_set)
-            self.resolver = PatternResolver(default_module_width=MODULE_WIDTH)
+                raise FileNotFoundError(f"Could not find '{icon_category}' icon category.")
+            self.generator = generator or BuildingGenerator2D(icon_set=icon_set)
+            self.resolver = resolver or PatternResolver(default_module_width=MODULE_WIDTH)
         except Exception as e:
-            # If the backend fails, display an error message inside the widget
             error_layout = QVBoxLayout(self)
             error_label = QLabel(f"FATAL ERROR:\nCould not initialize backend.\n\n{e}")
             error_label.setWordWrap(True)
             error_layout.addWidget(error_label)
             return
 
-        # --- 2. Create and Arrange UI Widgets ---
+        self._last_pixmap: QPixmap | None = None  # NEW
         self.setup_ui()
-
-        # --- 3. Initial Generation ---
         self.regenerate_facade()
 
     def setup_ui(self):
@@ -112,36 +108,41 @@ class FacadeEditorWidget(QWidget):
         self.width_label.setText(str(value))
 
     def regenerate_facade(self):
-        # This method is unchanged from the previous version. It's already perfect.
         try:
             width = self.width_slider.value()
             grammar = self.grammar_input.toPlainText()
-
             if not grammar.strip() or width <= 0:
-                self.image_label.setText("Invalid Input");
-                self.image_label.setPixmap(QPixmap());
+                self.image_label.setText("Invalid Input")
+                self.image_label.setPixmap(QPixmap())
+                self._last_pixmap = None
                 return
 
-            num_floors = len([line for line in grammar.strip().splitlines() if line.strip()]) or 1
+            num_floors = len([ln for ln in grammar.strip().splitlines() if ln.strip()]) or 1
             floor_widths = {i: width for i in range(num_floors)}
             facade_blueprint = self.resolver.resolve(grammar, floor_widths)
             facade_image = self.generator.assemble_full_facade(facade_blueprint)
-            pixmap = pil_to_qpixmap(facade_image)
+            self._last_pixmap = pil_to_qpixmap(facade_image)
+            self._apply_pixmap()
+        except Exception as e:
+            self.image_label.setText(f"ERROR:\n{e}")
+            self.image_label.setPixmap(QPixmap())
+            self._last_pixmap = None
+            print(f"ERROR during regeneration: {e}")
 
-            if not pixmap.isNull():
-                self.image_label.setPixmap(pixmap.scaled(
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._apply_pixmap()
+
+    def _apply_pixmap(self):
+        if self._last_pixmap and not self._last_pixmap.isNull():
+            self.image_label.setPixmap(
+                self._last_pixmap.scaled(
                     self.image_label.size(),
                     Qt.AspectRatioMode.KeepAspectRatio,
                     Qt.TransformationMode.SmoothTransformation
-                ))
-            else:
-                self.image_label.setText("Generated Empty Image");
-                self.image_label.setPixmap(QPixmap())
+            )
+        )
 
-        except Exception as e:
-            self.image_label.setText(f"ERROR:\n{e}");
-            self.image_label.setPixmap(QPixmap())
-            print(f"ERROR during regeneration: {e}")
 
 
 # =======================================================

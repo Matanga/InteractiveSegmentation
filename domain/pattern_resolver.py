@@ -2,10 +2,13 @@ from __future__ import annotations
 from typing import Dict, List, Tuple
 
 # We import the building blocks from the core module
-from building_grammar.core import Module, Group, GroupKind, Pattern, parse as parse_grammar
+from domain.grammar import Group, GroupKind, parse as parse_grammar
 
 # Define a type alias for clarity
 ModuleDimensions = Dict[str, Tuple[int, int]]  # e.g., {'wall': (100, 300)}
+
+__all__ = ["ResolutionError", "PatternResolver"]
+
 
 
 class ResolutionError(ValueError):

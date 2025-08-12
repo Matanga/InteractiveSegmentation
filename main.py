@@ -12,8 +12,8 @@ import sys
 
 from PySide6.QtWidgets import QApplication
 
-from building_grammar.core import parse  # domain-layer parser :contentReference[oaicite:0]{index=0}
-from gui.main_window import MainWindow
+from domain.grammar import parse  # domain-layer parser :contentReference[oaicite:0]{index=0}
+from ui.main_window import MainWindow
 
 # ---------------------------------------------------------------------------
 

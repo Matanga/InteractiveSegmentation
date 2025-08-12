@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Callable, List
 
-from .core import GrammarError, GroupKind, Pattern, parse
+from domain.grammar import GrammarError, GroupKind, Pattern, parse
 
 __all__ = [
     "Severity",

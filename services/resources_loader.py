@@ -78,6 +78,18 @@ class IconFiles:
         """Forces a re-scan of the entire resources directory structure."""
         cls._scan()
 
+    @classmethod
+    def all_icons(cls) -> Dict[str, IconSet]:
+        """Return a copy of all discovered categories -> icons."""
+        return dict(cls.categories)
+
+    @classmethod
+    def get_or_raise(cls, category_name: str) -> IconSet:
+        """Like get_icons_for_category, but raises if missing/empty."""
+        icons = cls.get_icons_for_category(category_name)
+        if not icons:
+            raise FileNotFoundError(f"No icons found for category '{category_name}' in {cls.folder}")
+        return icons
 
 # Initialize the catalogue on module import.
 IconFiles._scan()
@@ -87,9 +99,12 @@ IconFiles._scan()
 # This block only runs when the script is executed directly.
 if __name__ == "__main__":
     print(f"Scanning for icons in: '{IconFiles.folder.resolve()}'")
-    if IconFiles.names:
-        print(f"Found {len(IconFiles.names)} PNG icon(s):")
-        for name in sorted(IconFiles.names):
-            print(f"  • {name}")
+    categories = IconFiles.get_category_names()
+    if categories:
+        for category in categories:
+            icons = IconFiles.get_icons_for_category(category)
+            print(f"[{category}] {len(icons)} icon(s)")
+            for name, path in sorted(icons.items()):
+                print(f"  • {name} -> {path}")
     else:
         print("No PNG icons found in the specified directory.")

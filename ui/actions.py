@@ -11,10 +11,10 @@ from PySide6.QtWidgets import QMenu, QWidget
 # Use a TYPE_CHECKING block to import types for static analysis without
 # creating circular dependencies at runtime.
 if TYPE_CHECKING:
-    from module_item import GroupWidget, ModuleWidget
+    pass
 
 
-def add_context_menu(widget: QWidget, remove_cb: Callable[[], None]) -> None:
+def add_remove_context_menu(widget: QWidget, remove_cb: Callable[[], None]) -> None:
     """
     Attaches a standardized context menu to a widget.
 

@@ -1,9 +1,12 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, List
+import logging
 
 # We need PatternResolver for type hinting and instantiation inside the Director
-from building_grammar.pattern_resolver import PatternResolver
+from domain.pattern_resolver import PatternResolver
+
+log = logging.getLogger(__name__)
 
 # --- Constants for Clarity ---
 OPPOSING_SIDES = {
@@ -135,39 +138,14 @@ class BuildingDirector:
         return self._blueprint_cache
 
     def __str__(self) -> str:
-        """
-        Returns a clear, formatted string representation of the
-        final resolved building blueprint.
-        """
-        # Ensure the blueprint is generated before trying to print it.
-        blueprint = self.produce_blueprint()
-
-        # Use a list to build the string efficiently
-        output = [
-            "\n============================================",
-            "    Resolved Building Blueprint",
-            "============================================"
-        ]
-
-        # Define the order for consistent printing
-        print_order = ["front", "right", "back", "left"]
-
-        for side in print_order:
-            if side in blueprint:
-                floors = blueprint[side]
-                # A simple way to get the total width of the first floor for display
-                first_floor_width = sum(self.resolver._get_module_width(m) for m in floors.get(0, []))
-
-                output.append(f"\n◆ FACADE: {side.upper()} (Width: ~{first_floor_width}px)")
-                output.append("----------------------------------------")
-
-                # Print floors from top (0) to bottom
-                for floor_idx in sorted(floors.keys()):
-                    modules = floors[floor_idx]
-                    # We'll join with a space for readability
-                    module_str = " ".join(modules)
-                    # Use f-string formatting to align the output neatly
-                    output.append(f"  Floor {floor_idx}:  {module_str}")
-
-        output.append("============================================")
+        bp = self.produce_blueprint()
+        output = ["\n=== Resolved Building Blueprint ==="]
+        for side in ["front", "right", "back", "left"]:
+            if side in bp:
+                floors = bp[side]
+                width = sum(self.resolver._get_module_width(m) for m in floors.get(0, []))
+                output.append(f"\n◆ {side.upper()} (Width: ~{width}px)")
+                for idx in sorted(floors):
+                    output.append(f"  Floor {idx}:  {' '.join(floors[idx])}")
+        output.append("=" * 35)
         return "\n".join(output)

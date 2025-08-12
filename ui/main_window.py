@@ -5,9 +5,9 @@ from pathlib import Path
 
 # --- Component Imports ---
 from segmentation_panel import SegmentationPanel, RepeatableThread  # Import the thread
-from module_library import ModuleLibrary
-from panels import PatternInputPanel, PatternOutputPanel
-from pattern_area import PatternArea
+from ui.pattern_editor.module_library import ModuleLibrary
+from ui.pattern_editor.pattern_text_panels import PatternInputPanel, PatternOutputPanel
+from ui.pattern_editor.pattern_area import PatternArea
 
 from PySide6.QtCore import Qt, Slot
 from PySide6.QtGui import QAction, QActionGroup, QPixmap
@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
 )
 
 
-from gui.pyvista_building_viewer import BuildingViewerApp
+from ui.building_viewer.building_viewer import BuildingViewerApp
 
 
 

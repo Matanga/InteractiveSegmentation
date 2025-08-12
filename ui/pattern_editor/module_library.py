@@ -1,5 +1,3 @@
-# module_library.py (Refactored for clarity)
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -15,8 +13,8 @@ from PySide6.QtWidgets import (
     QComboBox
 )
 
-from module_item import ModuleWidget
-from resources_loader import IconFiles
+from ui.pattern_editor.module_item import ModuleWidget
+from services.resources_loader import IconFiles
 
 
 class ModuleLibrary(QWidget):
@@ -61,8 +59,9 @@ class ModuleLibrary(QWidget):
 
         # --- Widget Initialization ---
         self._item_widgets: list[QWidget] = []
-        self._add_btn = QPushButton("＋", clicked=self._on_add_icon)
+        self._add_btn = QPushButton("＋")
         self._add_btn.setFixedSize(self.ICON_SIZE, self.ICON_SIZE)
+        self._add_btn.clicked.connect(self._on_add_icon)
 
         # --- Styling ---
         # <<< FIX: Remove background color to blend with parent QGroupBox.
@@ -134,14 +133,6 @@ class ModuleLibrary(QWidget):
             cache[name] = pix
         return cache
 
-        """Creates a cache of scaled QPixmaps for a given set of icons."""
-        cache: dict[str, QPixmap] = {}
-        for name, path in icon_set.items():
-            pix = QPixmap(str(path)).scaled(
-                self.ICON_SIZE, self.ICON_SIZE,
-                Qt.KeepAspectRatio, Qt.SmoothTransformation)
-            cache[name] = pix
-        return cache
 
 
     def _on_add_icon(self) -> None:

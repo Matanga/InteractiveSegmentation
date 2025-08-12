@@ -1,37 +1,51 @@
-import os
-from PIL import Image
+from __future__ import annotations
+from pathlib import Path
 from typing import Dict, List, Tuple
-from pathlib import Path # Add Path import
+from PIL import Image
+import logging
 
-import math
+log = logging.getLogger(__name__)
 
 # A type alias for our blueprint structure for clarity
 IconSet = Dict[str, Path]
 Blueprint = Dict[str, Dict[int, List[str]]]
 
+__all__ = ["BuildError", "BuildingGenerator2D", "IconSet", "Blueprint"]
+
+
 class BuildError(Exception):
     """Custom exception for errors during the building generation process."""
 
 
-class BuildingGenerator:
+class BuildingGenerator2D:
     """
     Generates a 2.5D image of a building from a resolved blueprint.
     """
 
-    def __init__(self, icon_set: IconSet):
+    def __init__(self, icon_set: IconSet, padding_module: str = "Wall00"):
         """
-        Initializes the generator by loading module assets from a provided icon set.
-
         Args:
-            icon_set (IconSet): A dictionary mapping module names to their file paths.
+            icon_set: name -> image path.
+            padding_module: module name to use when normalizing floor widths.
         """
-        print("INFO: BuildingGenerator received an icon set to load.")
+        self.padding_module = padding_module
+        log.info("BuildingGenerator2D: loading icon set (%d items)...", len(icon_set))
         self.modules: Dict[str, Image.Image] = self._load_modules_from_set(icon_set)
         if not self.modules:
-            raise BuildError("The provided icon set was empty or no images could be loaded.")
+            raise BuildError("Icon set empty or images failed to load.")
 
-        self.default_height = 128
-        print(f"INFO: Detected default module height of {self.default_height}px.")
+        # default height from the first module; ensure consistency
+        first = next(iter(self.modules.values()))
+        self.default_height = first.height
+
+        inconsistent = [k for k, im in self.modules.items() if im.height != self.default_height]
+        if inconsistent:
+            log.warning("Some modules have different heights: %s", inconsistent)
+            # Option A: normalize heights (uncomment if you prefer strict normalization)
+            # for k, im in self.modules.items():
+            #     if im.height != self.default_height:
+            #         self.modules[k] = im.resize((im.width, self.default_height), Image.Resampling.LANCZOS)
+
 
     # This method replaces the old _load_modules
     def _load_modules_from_set(self, icon_set: IconSet) -> Dict[str, Image.Image]:

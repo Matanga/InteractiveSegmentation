@@ -8,24 +8,21 @@ from PySide6.QtCore import Qt, QByteArray, QMimeData, Signal
 from PySide6.QtGui import QColor, QDrag, QMouseEvent, QPixmap, QShowEvent
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QLayout, QWidget
 
-from actions import add_context_menu
+from ui.actions import add_remove_context_menu
+
+from domain.grammar import GroupKind, RIGID
+
+
 
 # =========================================================================== #
 # Domain Enums & Utilities
 # =========================================================================== #
 
+GROUP_COLORS: dict[GroupKind, QColor] = {
+    GroupKind.FILL: QColor("#f7d9b0"),
+    GroupKind.RIGID: QColor("#9ec3f7"),
+}
 
-class GroupKind(Enum):
-    """Defines the behavioral type of a group of modules."""
-    FILL = auto()
-    RIGID = auto()
-
-    def colour(self) -> QColor:
-        """Returns the representative color for the group kind."""
-        return QColor("#f7d9b0") if self is GroupKind.FILL else QColor("#9ec3f7")
-
-    def __str__(self) -> str:
-        return self.name.lower()
 
 
 def owning_layout(w: QWidget) -> Optional[QLayout]:
@@ -120,7 +117,7 @@ class ModuleWidget(QLabel):
         # Add context menu for removal only to instances on the canvas.
         if not self.is_library:
             self.setFocusPolicy(Qt.ClickFocus)
-            add_context_menu(self, self._remove_self)
+            add_remove_context_menu(self, self._remove_self)
 
     def refresh_icon(self) -> None:
         """
@@ -246,7 +243,7 @@ class GroupWidget(QFrame):
         # Check if the parent FacadeStrip is in 'sandbox' mode.
         is_sandbox = (
             isinstance(parent_strip, QWidget) and
-            getattr(parent_strip, 'mode', None) == "Rigid"
+            getattr(parent_strip, 'mode', None) == RIGID
         )
 
         if is_sandbox:
@@ -254,7 +251,8 @@ class GroupWidget(QFrame):
             self.setStyleSheet("QFrame { background: transparent; border: none; padding: 0px; }")
         else:
             # In structured mode, styling depends on the group kind.
-            col = self.kind.colour().name()
+            col = GROUP_COLORS.get(self.kind, QColor("#cccccc")).name()
+
             self.setStyleSheet(f"""
                 QFrame {{
                     background: {col};

@@ -1,15 +1,11 @@
 # No special path manipulation is needed because this script is in the project root.
 # Python automatically adds the script's directory to the path.
 
-from building_grammar.core import parse, GrammarError
-from building_grammar.pattern_resolver import PatternResolver, ResolutionError
-from building_grammar.design_spec import BuildingSpec, FacadeSpec, BuildingDirector
+from domain.building_spec import BuildingSpec, FacadeSpec, BuildingDirector
 
+from services.resources_loader import IconFiles # Import from its location
 
-from building_grammar.building_generator import BuildingGenerator
-from gui.resources_loader import IconFiles # Import from its location
-
-from building_grammar.building_generator import BuildingGenerator # <-- NEW IMPORT
+from domain.building_generator_2d import BuildingGenerator2D # <-- NEW IMPORT
 
 
 MODULE_WIDTH = 128
@@ -528,7 +524,7 @@ def test_generate_3d_building_workflow():
     # 3. Prepare the generator
     IconFiles.reload()
     icon_set = IconFiles.get_icons_for_category("Default")
-    generator = BuildingGenerator(icon_set=icon_set)
+    generator = BuildingGenerator2D(icon_set=icon_set)
     print("   3. BuildingGenerator initialized with module images.")
 
     # 4. Generate the final 3D image
@@ -574,6 +570,6 @@ if __name__ == "__main__":
     print(f"  Failed: {failed_count}")
     print("====================================\n")
 
-    # Exit with a non-zero code if any tests failed, useful for automation
+    # Exit with a non-zero code if any scripts failed, useful for automation
     if failed_count > 0:
         exit(1)

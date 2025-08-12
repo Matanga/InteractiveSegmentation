@@ -38,7 +38,15 @@ __all__ = [
     "Pattern",
     "parse",
     "validate",
+    "parse_pattern",
+    "validate_pattern",
+    "REPEATABLE",
+    "RIGID"
 ]
+
+
+REPEATABLE = "Repeatable"
+RIGID = "Rigid"
 
 
 class GrammarError(ValueError):
@@ -150,6 +158,13 @@ _GROUP_RE = re.compile(
     re.VERBOSE,
 )
 
+def parse_pattern(pattern_str: str) -> Pattern:
+    """Alias: clearer name for external callers."""
+    return parse(pattern_str)
+
+def validate_pattern(pattern_str: str) -> None:
+    """Alias: clearer name for external callers."""
+    return validate(pattern_str)
 
 def _parse_group(token: str) -> Group:
     """Transform raw *token* into a validated :class:`Group`."""

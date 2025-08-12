@@ -1,14 +1,13 @@
 import pyvista
 from typing import Dict, List, Tuple
 
-from gui.resources_loader import IconFiles
+from services.resources_loader import IconFiles
 
 from PIL import Image
 import  numpy as np
-MODULE_WIDTH=128
-MODULE_HEIGHT=128
+from domain.building_spec import MODULE_WIDTH,MODULE_HEIGHT
 
-class PyVistaBuildingGenerator:
+class BuildingGenerator3D:
     """
     This class converts abstract building blueprints into 3D PyVista mesh objects.
     """
@@ -16,14 +15,22 @@ class PyVistaBuildingGenerator:
     def __init__(self):
         self.textures: Dict[str, pyvista.Texture] = {}
 
-    def _get_texture(self, module_name: str) -> pyvista.Texture:
-        """Loads a texture image from a file once and caches it."""
-        if module_name not in self.textures:
-            filepath = IconFiles.get_icons_for_category("Default").get(module_name)
-            if not filepath:
-                filepath = IconFiles.get_icons_for_category("Default").get("Wall00")
-            self.textures[module_name] = pyvista.Texture(str(filepath))
-        return self.textures[module_name]
+    def _get_texture( self, module_name: str, category: str = "Default", fallback_module: str = "Wall00" ) -> pyvista.Texture:
+        if module_name in self.textures:
+            return self.textures[module_name]
+
+        icon_set = IconFiles.get_icons_for_category(category)
+        filepath = icon_set.get(module_name) or icon_set.get(fallback_module)
+
+        if not filepath:
+            raise FileNotFoundError(
+                f"No texture found for module '{module_name}' "
+                f"in category '{category}' and no fallback '{fallback_module}' available."
+            )
+
+        texture = pyvista.Texture(str(filepath))
+        self.textures[module_name] = texture
+        return texture
 
     def create_module_mesh(self, module_name: str) -> pyvista.DataSet:
         """
