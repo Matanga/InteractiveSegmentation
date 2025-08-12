@@ -41,7 +41,9 @@ __all__ = [
     "parse_pattern",
     "validate_pattern",
     "REPEATABLE",
-    "RIGID"
+    "RIGID",
+    "fix_facade_expression",
+    "sanitize_rigid_for_sandbox"
 ]
 
 
@@ -216,3 +218,49 @@ def parse(pattern_str: str) -> Pattern:
 def validate(pattern_str: str) -> None:
     """Validate *pattern_str* by attempting to parse it."""
     parse(pattern_str)
+
+
+# ──────────────────────────────────────────────────────────────
+# Text cleanup helpers moved from services/facade_segmentation
+# ──────────────────────────────────────────────────────────────
+
+_RE_BAD_CHARS = re.compile(r"[^A-Za-z0-9><\[\]\-\s]+")
+_RE_GROUPS = re.compile(r"([<\[])(.*?)([>\]])", re.S)
+_RE_OK_TOKEN = re.compile(r"[A-Za-z]+[0-9]+$")
+_RE_NAME_ONLY = re.compile(r"[A-Za-z]+$")
+
+def fix_facade_expression(expr: str) -> str:
+    expr = _RE_BAD_CHARS.sub("", expr)
+
+    def _fix_group(m: re.Match) -> str:
+        open_bracket, body, close_bracket = m.groups()
+        tokens = [tok.strip() for tok in body.split("-") if tok.strip()]
+        fixed = []
+        for tok in tokens:
+            if _RE_OK_TOKEN.fullmatch(tok):
+                fixed.append(tok)
+            elif _RE_NAME_ONLY.fullmatch(tok):
+                fixed.append(f"{tok}00")
+        return f"{open_bracket}{'-'.join(fixed)}{close_bracket}" if fixed else ""
+
+    expr = _RE_GROUPS.sub(_fix_group, expr)
+    cleaned_lines = []
+    for line in expr.splitlines():
+        groups = re.findall(r"(?:<[^>]+>|\[[^\]]+\])", line)
+        if groups:
+            cleaned_lines.append(" ".join(groups))
+    return "\n".join(cleaned_lines)
+
+def sanitize_rigid_for_sandbox(text: str) -> str:
+    processed_lines = []
+    for line in text.strip().splitlines():
+        modules_on_line = re.findall(r'\[([^,\]]+)\]', line)
+        sanitized = []
+        for module in modules_on_line:
+            token = module.strip().capitalize()
+            if not re.search(r'\d+$', token):
+                token += "00"
+            sanitized.append(token)
+        if sanitized:
+            processed_lines.append(f"[{'-'.join(sanitized)}]")
+    return "\n".join(processed_lines)

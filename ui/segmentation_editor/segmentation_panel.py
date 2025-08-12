@@ -1,66 +1,67 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtCore import Qt, Signal, Slot
 
 from services.facade_segmentation import (
-    SymbolicThread, RigidThread, RepeatableThread, fix_facade_expression,
-    _sanitize_rigid_for_sandbox
+    SymbolicImageWorker, RigidExpressionWorker, RepeatableExpressionWorker
 )
+from domain.grammar import sanitize_rigid_for_sandbox, fix_facade_expression
 
-# =========================================================================== #
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+_ALLOWED_IMG_EXTS = {".jpg", ".jpeg", ".png"}
+
+# ---------------------------------------------------------------------------
 # 1.  Re-usable Image Drop Widget
-# =========================================================================== #
+# ---------------------------------------------------------------------------
 
 class ImageDropLabel(QtWidgets.QLabel):
     """
-    A custom QLabel that accepts image file drops and mouse clicks to open a file dialog.
+    A QLabel that accepts image drops/clicks and emits the selected file path.
     """
-    image_loaded = Signal(str)  # Emitted with the local file path of the loaded image.
+    image_loaded = Signal(str)  # emits local file path
 
-    def __init__(self, text: str = "", parent: QtWidgets.QWidget | None = None):
+    def __init__(self, text: str = "", parent: Optional[QtWidgets.QWidget] = None):
         super().__init__(text, parent)
         self.setAlignment(Qt.AlignCenter)
         self.setAcceptDrops(True)
         self.setWordWrap(True)
         self.setStyleSheet("""
-            ImageDropLabel { 
-                border: 2px dashed #aaa; 
-                border-radius: 5px; 
-                color: #777; 
-                padding: 10px; 
+            ImageDropLabel {
+                border: 2px dashed #aaa;
+                border-radius: 5px;
+                color: #777;
+                padding: 10px;
             }
         """)
 
-    def dragEnterEvent(self, ev: QtGui.QDragEnterEvent):
-        """Accepts the drag event if it contains URLs."""
+    def dragEnterEvent(self, ev: QtGui.QDragEnterEvent) -> None:
         if ev.mimeData().hasUrls():
             ev.acceptProposedAction()
 
-    def dropEvent(self, ev: QtGui.QDropEvent):
-        """Handles the drop event, emitting the path of a valid image file."""
-        if ev.mimeData().hasUrls():
-            path = ev.mimeData().urls()[0].toLocalFile()
-            if Path(path).suffix.lower() in (".jpg", ".jpeg", ".png"):
-                self.image_loaded.emit(path)
+    def dropEvent(self, ev: QtGui.QDropEvent) -> None:
+        if not ev.mimeData().hasUrls():
+            return
+        path = ev.mimeData().urls()[0].toLocalFile()
+        if Path(path).suffix.lower() in _ALLOWED_IMG_EXTS:
+            self.image_loaded.emit(path)
 
-    def mousePressEvent(self, ev: QtGui.QMouseEvent):
-        """Opens a file dialog when the label is clicked."""
+    def mousePressEvent(self, _ev: QtGui.QMouseEvent) -> None:
         path, _ = QtWidgets.QFileDialog.getOpenFileName(
             self, "Select Image", "", "Image files (*.png *.jpg *.jpeg)"
         )
         if path:
             self.image_loaded.emit(path)
 
-    def set_image(self, path: str):
-        """Loads and displays a pixmap from the given file path, scaled to fit."""
+    def set_image(self, path: str) -> None:
         pixmap = QtGui.QPixmap(path)
-        self.setPixmap(pixmap.scaled(
-            self.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation
-        ))
+        self.setPixmap(pixmap.scaled(self.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
+
 
 # =========================================================================== #
 # 2.  Main Segmentation Panel
@@ -116,11 +117,13 @@ class SegmentationPanel(QtWidgets.QWidget):
         # --- STEP 1: DEFINE ALL WIDGETS ---
         style = self.style()
         # Column 1: Actions
-        self.btn_sym = QtWidgets.QPushButton("1. Generate Symbolic", icon=style.standardIcon(QtWidgets.QStyle.StandardPixmap.SP_MediaPlay))
-        self.btn_rigid = QtWidgets.QPushButton("2. Generate Rigid", icon=style.standardIcon(QtWidgets.QStyle.StandardPixmap.SP_MediaPlay))
-        self.btn_rep = QtWidgets.QPushButton("3. Generate Repeatable", icon=style.standardIcon(QtWidgets.QStyle.StandardPixmap.SP_MediaPlay))
-        #self.btn_send_to_editor = QtWidgets.QPushButton("➤ Send to Editor", icon=style.standardIcon(QtWidgets.QStyle.StandardPixmap.SP_ArrowRight))
-        #self.btn_send_to_editor.setObjectName("SendToEditor")
+        self.btn_sym = QtWidgets.QPushButton("1. Generate Symbolic",
+                                             icon=style.standardIcon(QtWidgets.QStyle.StandardPixmap.SP_MediaPlay))
+        self.btn_rigid = QtWidgets.QPushButton("2. Generate Rigid",
+                                               icon=style.standardIcon(QtWidgets.QStyle.StandardPixmap.SP_MediaPlay))
+        self.btn_rep = QtWidgets.QPushButton("3. Generate Repeatable",
+                                             icon=style.standardIcon(QtWidgets.QStyle.StandardPixmap.SP_MediaPlay))
+
 
         self.btn_send_rigid = QtWidgets.QPushButton("➤ Send to Rigid Editor")
         self.btn_send_rigid.setObjectName("SendToEditor")
@@ -170,6 +173,7 @@ class SegmentationPanel(QtWidgets.QWidget):
         input_box = QtWidgets.QGroupBox("Input Image")
         input_lay = QtWidgets.QVBoxLayout(input_box)
         input_lay.addWidget(self.in_label)
+
         input_params_layout = QtWidgets.QVBoxLayout()
         input_params_layout.addWidget(input_box, 1)
         input_params_layout.addWidget(self.params_box)
@@ -203,7 +207,6 @@ class SegmentationPanel(QtWidgets.QWidget):
         output_column_layout = QtWidgets.QVBoxLayout()
         output_column_layout.addWidget(visuals_box, 1)
         output_column_layout.addWidget(expressions_splitter, 2)
-
         output_column_widget = QtWidgets.QWidget()
         output_column_widget.setLayout(output_column_layout)
 
@@ -344,29 +347,21 @@ class SegmentationPanel(QtWidgets.QWidget):
         self.btn_send_rigid.clicked.connect(self._on_send_rigid)
         self.btn_send_rep.clicked.connect(self._on_send_rep)
 
-    @Slot()
-    def _on_send_rigid(self):
-        """Emits the rigid pattern for the sandbox editor after sanitizing it."""
-        if self._rigid_text:
-            sanitized_text = _sanitize_rigid_for_sandbox(self._rigid_text)
-
-            # Reverse the order of the floors (lines)
-            reversed_lines = sanitized_text.splitlines()
-            reversed_lines.reverse()
-            final_text = "\n".join(reversed_lines)
-
-            self.patternGenerated.emit(final_text, "Rigid")
+    # ------------------------- Actions / Slots -------------------------------
 
     @Slot()
-    def _on_send_rep(self):
-        """Emits the repeatable pattern for the structured editor."""
-        if self._final_repeatable_text:
-            # Reverse the order of the floors (lines)
-            reversed_lines = self._final_repeatable_text.splitlines()
-            reversed_lines.reverse()
-            final_text = "\n".join(reversed_lines)
+    def _on_send_rigid(self) -> None:
+        if not self._rigid_text:
+            return
+        final_text = self._reverse_lines(sanitize_rigid_for_sandbox(self._rigid_text))
+        self.patternGenerated.emit(final_text, "Rigid")
 
-            self.patternGenerated.emit(final_text, "Repeatable")
+    @Slot()
+    def _on_send_rep(self) -> None:
+        if not self._final_repeatable_text:
+            return
+        self.patternGenerated.emit(self._reverse_lines(self._final_repeatable_text), "Repeatable")
+
 
     @Slot(str)
     def on_image_loaded(self, path: str) -> None:
@@ -379,24 +374,26 @@ class SegmentationPanel(QtWidgets.QWidget):
 
     @Slot()
     def start_symbolic(self) -> None:
-        """Starts the Symbolic generation thread."""
-        if not self._image_path: return
-        thread = SymbolicThread(self._image_path, self)
+        if not self._image_path:
+            return
+        thread = SymbolicImageWorker(self._image_path, self)
         self._run_thread(thread, self._symbolic_done, "1/3: Generating symbolic…")
 
     @Slot()
     def start_rigid(self) -> None:
         """Starts the Rigid expression generation thread."""
-        if not self._symbolic_bytes: return
-        thread = RigidThread(self._symbolic_bytes, self._cfg(), self)
+        if not self._symbolic_bytes:
+            return
+        thread = RigidExpressionWorker(self._symbolic_bytes, self._cfg(), self)
         self._run_thread(thread, self._rigid_done, "2/3: Generating rigid expression…")
 
     @Slot()
     def start_repeatable(self) -> None:
         """Starts the Repeatable expression generation thread."""
-        if not self._rigid_text: return
+        if not self._rigid_text:
+            return
         model = self.cmb_model.currentText()
-        thread = RepeatableThread(self._rigid_text, model, self)
+        thread = RepeatableExpressionWorker(self._rigid_text, model, self)
         self._run_thread(thread, self._repeat_done, "3/3: Generating repeatable…")
 
     def _run_thread(self, thread: QtCore.QThread, done_slot: QtCore.Slot, status_msg: str) -> None:
@@ -441,9 +438,9 @@ class SegmentationPanel(QtWidgets.QWidget):
 
     @Slot(str)
     def _on_error(self, msg: str) -> None:
-        """Displays an error message in the status bar."""
         self.status.setText(f"Error: {msg}")
         self.status.setStyleSheet("color:red;")
+        self._update_ui_state()
 
     @Slot()
     def _on_thread_finished(self) -> None:
@@ -524,3 +521,12 @@ class SegmentationPanel(QtWidgets.QWidget):
             "empty_to_wall": self.chk_empty_wall.isChecked(),
             "enable_variations": self.chk_variations.isChecked(),
         }
+
+    # ---------------------------------------------------------------------------
+    # Small internal helpers
+    # ---------------------------------------------------------------------------
+    def _reverse_lines(self, text: str) -> str:
+        """Utility to reverse line order (used by both ‘send’ buttons)."""
+        lines = text.splitlines()
+        lines.reverse()
+        return "\n".join(lines)
