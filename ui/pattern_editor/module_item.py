@@ -6,7 +6,7 @@ from typing import Optional
 
 from PySide6.QtCore import Qt, QByteArray, QMimeData, Signal
 from PySide6.QtGui import QColor, QDrag, QMouseEvent, QPixmap, QShowEvent
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QLayout, QWidget
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QLayout, QWidget, QSizePolicy
 
 from ui.actions import add_remove_context_menu
 
@@ -216,6 +216,8 @@ class GroupWidget(QFrame):
         self.kind = kind
         self.repeat: int | None = None  # Reserved for future use
         self.setAcceptDrops(True)
+
+        self.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
 
 
         self._lay = QHBoxLayout(self)

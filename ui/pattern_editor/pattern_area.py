@@ -1,285 +1,245 @@
 from __future__ import annotations
+import json
 
 from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtWidgets import QVBoxLayout, QWidget, QPushButton
 
-from domain.grammar import parse, GroupKind, REPEATABLE, RIGID
-from ui.pattern_editor.facade_strip import FacadeStrip
-from ui.pattern_editor.module_item import GroupWidget, ModuleWidget, GroupKind as UiKind
+from domain.grammar import REPEATABLE, RIGID
+from services.pattern_preprocessor import preprocess_unreal_json_data
 
-
+# --- NEW: Import our new composite widget ---
+from ui.pattern_editor.floor_row_widget import FloorRowWidget
+from ui.pattern_editor.module_item import GroupWidget, ModuleWidget
 
 class PatternArea(QWidget):
     """
-    The main canvas for designing a building facade. It manages multiple
-    FacadeStrips (floors) and can switch between two editing modes:
-    - 'structured': Floors can contain multiple rigid or fill groups.
-    - 'sandbox': Each floor is a single, simple strip of modules.
+    The main canvas for designing a building. It manages a vertical list of
+    FloorRowWidgets and handles the top-level serialization to and from the
+    JSON data format.
     """
-    patternChanged = Signal(str)
+    patternChanged = Signal(str)  # This signal will now emit the full JSON string
 
     def __init__(self, num_floors: int = 3, parent: QWidget | None = None):
         super().__init__(parent)
-        self.mode = REPEATABLE    # Default mode
-        self.setAcceptDrops(True)
+        self.mode = REPEATABLE
+        self.setAcceptDrops(True)  # Note: drag/drop between floors might be a future feature
 
         # --- Internal State ---
-        # Two separate lists to hold the strips for each mode, acting as a cache
-        # when a mode is not active.
-        self._structured_strips: list[FacadeStrip] = []
-        self._sandbox_strips: list[FacadeStrip] = []
+        # NOTE: The caching logic is simplified. We only need one list for the
+        # currently visible floor row widgets.
+        self._floor_rows: list[FloorRowWidget] = []
 
         # --- Layouts ---
         self._root_layout = QVBoxLayout(self)
         self._root_layout.setSpacing(8)
-        self._root_layout.setAlignment(Qt.AlignTop | Qt.AlignLeft)
+        self._root_layout.setAlignment(Qt.AlignTop)
 
-        self._strips_layout = QVBoxLayout()
-        self._strips_layout.setSpacing(4)
-        self._strips_layout.setAlignment(Qt.AlignTop)
-        self._root_layout.addLayout(self._strips_layout)
+        # This layout will hold the FloorRowWidgets
+        self._rows_layout = QVBoxLayout()
+        self._rows_layout.setSpacing(8)  # A bit more spacing between full rows
+        self._rows_layout.setAlignment(Qt.AlignTop)
+        self._root_layout.addLayout(self._rows_layout)
 
         self.add_floor_button = QPushButton("➕ Add Floor")
-        self.add_floor_button.clicked.connect(self._add_strip_at_top)
+        self.add_floor_button.clicked.connect(self._add_row_at_top)
         self.add_floor_button.setFixedWidth(200)
         self._root_layout.addWidget(self.add_floor_button, 0, Qt.AlignHCenter)
         self._root_layout.addStretch(1)
 
         for _ in range(num_floors):
-            self._add_strip_at_top()
+            self._add_row_at_top()
+
+    def redraw(self) -> None:
+        """
+        Forces a full redraw of all module widgets.
+
+        This iterates through the new component structure to find and refresh
+        every ModuleWidget instance.
+        """
+        # 1. Iterate through every floor row.
+        for row in self._floor_rows:
+            # 2. Iterate through the four facade cells in that row.
+            for cell in row.facade_cells:
+                # 3. Iterate through the groups in that cell.
+                for j in range(cell.module_container_layout.count()):
+                    group = cell.module_container_layout.itemAt(j).widget()
+                    if not isinstance(group, GroupWidget): continue
+                    # 4. Finally, iterate through the modules in that group.
+                    for k in range(group.layout().count()):
+                        module = group.layout().itemAt(k).widget()
+                        if isinstance(module, ModuleWidget):
+                            # Tell the module to refresh its icon
+                            module.refresh_icon()
+
+        # After all icons are updated, regenerate the pattern.
+        self._regenerate_and_emit_pattern()
 
     def set_mode(self, new_mode: str):
         """
-        Switches the canvas between 'structured' and 'sandbox' modes by swapping
-        the visible list of FacadeStrips.
+        Switches the canvas between 'Repeatable' and 'Rigid' modes.
+        This now involves telling each existing FloorRowWidget to update its cells.
         """
         if new_mode == self.mode or new_mode not in (REPEATABLE, RIGID):
             return
 
-        # 1. Unload the currently visible strips into their corresponding cache list.
-        # This involves removing them from the layout and hiding them.
-        current_strips_cache = self._structured_strips if self.mode == REPEATABLE else self._sandbox_strips
-        current_strips_cache.clear()
-        while self._strips_layout.count():
-            item = self._strips_layout.takeAt(0)
-            if strip := item.widget():
-                strip.hide()
-                current_strips_cache.append(strip)
-
-        # 2. Update the mode.
         self.mode = new_mode
+        # The mode is now a property of the cells within each row.
+        # We need to recreate the rows to apply the new mode correctly.
+        # A simpler approach than full caching is to get the current data and reload it.
+        current_data_str = self.get_data_as_json()
+        self.load_from_json(current_data_str)
 
-        # 3. Load the strips for the new mode from its cache list.
-        target_cache  = self._structured_strips if self.mode == REPEATABLE else self._sandbox_strips
+    def get_data_as_json(self, indent: int = 4) -> str:
+        """
+        Generates the building JSON string by querying each FloorRowWidget for its data.
+        """
+        building_data = []
+        # The list of floor rows is kept in visual order (top-to-bottom).
+        # We iterate through it and get the data for each floor.
+        for row in self._floor_rows:
+            building_data.append(row.get_floor_data())
 
-        # If the target mode's cache is empty, create a default set of strips.
-        if not target_cache :
-            for _ in range(3):  # Default to 3 new floors
-                self._add_strip(self.mode)
-        else:
-            # If strips already exist, add them back to the layout and show them.
-            for strip in target_cache :
-                self._strips_layout.addWidget(strip)
-                strip.show()
+        # The Unreal format expects ground floor (our last visual row) to be first
+        # in the JSON array. So, we reverse the list before dumping.
+        building_data.reverse()
 
-        self._re_index_floors()
+        return json.dumps(building_data, indent=indent)
 
-    def get_pattern_string(self) -> str:
-        """Generates the pattern string based on the current visual layout and mode."""
-        all_floors_text = []
-        for i in range(self._strips_layout.count()):
-            strip = self._strips_layout.itemAt(i).widget()
-            if not isinstance(strip, FacadeStrip):
-                continue
-
-            floor_groups_text: list[str] = []
-            sandbox_module_names: list[str] = []
-
-            for j in range(strip.module_container_layout.count()):
-                group = strip.module_container_layout.itemAt(j).widget()
-                if not isinstance(group, GroupWidget):
-                    continue
-
-                module_names  = [
-                    mod.name for k in range(group.layout().count())
-                    if isinstance(mod := group.layout().itemAt(k).widget(), ModuleWidget)
-                ]
-
-                if not module_names :
-                    continue
-
-                if self.mode == REPEATABLE:
-                    group_text = "-".join(module_names )
-                    wrapper = "<{}>" if group.kind == GroupKind.FILL else "[{}]"
-                    floor_groups_text.append(wrapper.format(group_text))
-                else:  # Sandbox mode collects all modules into one list.
-                    sandbox_module_names.extend(module_names )
-
-            if self.mode == RIGID:
-                all_floors_text.append(f"[{'-'.join(sandbox_module_names)}]" if sandbox_module_names else "[]")
-            else:
-                all_floors_text.append("".join(floor_groups_text))
-
-        return "\n".join(all_floors_text)
-
-    def load_from_string(self, pattern_str: str, *, library: "ModuleLibrary") -> None:
-        """Clears the view and builds a new layout from a pattern string."""
+    def load_from_json(self, json_str: str) -> None:
+        """
+        Clears the view and builds a new layout from a building JSON string.
+        """
         try:
-            model = parse(pattern_str)
-        except Exception as e:
-            print(f"Error parsing pattern string: {e}")
+            raw_data = json.loads(json_str)
+            # --- NEW: Use our pre-processor service to ensure data is clean ---
+            building_data = preprocess_unreal_json_data(raw_data)
+        except (json.JSONDecodeError, TypeError) as e:
+            print(f"Error parsing or processing JSON: {e}")
             return
 
         self._clear_view()
-        # Get the correct list to populate, which is now empty.
-        target_list = self._structured_strips if self.mode == REPEATABLE else self._sandbox_strips
 
-        # Build the UI from the parsed model, in reverse order for correct display.
-        for floor_idx, floor_data in reversed(list(enumerate(model.floors))):
-            strip = self._create_strip(floor_idx, self.mode)
+        # The JSON data has ground floor first, but we build our UI from top to bottom.
+        # So we iterate through the data in reverse.
+        for floor_data in reversed(building_data):
+            new_row = self._create_row(len(self._floor_rows))
+            new_row.set_floor_data(floor_data)
 
+            self._rows_layout.addWidget(new_row)
+            self._floor_rows.append(new_row)
 
-            for grp_data in floor_data:
-                ui_group = GroupWidget(kind=grp_data.kind)  # domain enum directly
-                ui_group.repeat = grp_data.repeat
-                ui_group.structureChanged.connect(strip.structureChanged.emit)
-                strip.module_container_layout.addWidget(ui_group)
+        self._re_index_floors()
 
-                for mod_object in grp_data.modules:
-                    mod_widget = ModuleWidget(mod_object.name, False)
-                    mod_widget.structureChanged.connect(ui_group.structureChanged.emit)
-                    ui_group.layout().addWidget(mod_widget)
-
-            self._strips_layout.addWidget(strip)
-            target_list.append(strip)
-
-        self.patternChanged.emit(self.get_pattern_string())
-
-
-    def _create_strip(self, floor_idx: int, mode: str) -> FacadeStrip:
-        strip = FacadeStrip(floor_idx, mode=mode)
-        # header signals
-        strip.header.remove_requested.connect(self._remove_strip)
-        strip.header.move_up_requested.connect(self._move_strip_up)
-        strip.header.move_down_requested.connect(self._move_strip_down)
-        # structure changes
-        strip.structureChanged.connect(self._regenerate_and_emit_pattern)
-        return strip
-
+    def _create_row(self, floor_idx: int) -> FloorRowWidget:
+        """Helper to create a new FloorRowWidget and connect its signals."""
+        row = FloorRowWidget(floor_idx, mode=self.mode)
+        row.remove_requested.connect(self._remove_row)
+        row.move_up_requested.connect(self._move_row_up)
+        row.move_down_requested.connect(self._move_row_down)
+        row.structureChanged.connect(self._regenerate_and_emit_pattern)
+        return row
 
     def _clear_view(self):
-        """Safely removes all strips from the current view and clears the cache."""
-        # Clear the python list that holds the strip references for the active mode.
-        target_list = self._structured_strips if self.mode == REPEATABLE  else self._sandbox_strips
-        target_list.clear()
-
-        # Clear the UI layout, deleting each widget.
-        while self._strips_layout.count():
-            item = self._strips_layout.takeAt(0)
+        """Safely removes all floor row widgets from the view and internal list."""
+        self._floor_rows.clear()
+        while self._rows_layout.count():
+            item = self._rows_layout.takeAt(0)
             if widget := item.widget():
-                widget.setParent(None)  # Disconnect from layout
-                widget.deleteLater()  # Schedule for deletion
+                widget.setParent(None)
+                widget.deleteLater()
 
-    def _add_strip(self, mode_to_add_to: str):
-        """
-        Creates a strip for a specific mode, adds it to the top of the layout,
-        and prepends it to the correct internal list.
-        """
-        target_list = self._structured_strips if mode_to_add_to == REPEATABLE  else self._sandbox_strips
-        new_floor_idx = len(target_list)
-
-        strip = self._create_strip(new_floor_idx, mode_to_add_to)
-
-        # insertWidget(0,...) adds to the top of the UI.
-        self._strips_layout.insertWidget(0, strip)
-        target_list.insert(0, strip)
-
-    def _add_strip_at_top(self):
-        """Slot for the 'Add Floor' button. Adds a strip to the currently active mode."""
-        self._add_strip(self.mode)
+    def _add_row_at_top(self):
+        """Slot for the 'Add Floor' button. Adds a new row to the top of the UI."""
+        # A new row is inserted at visual index 0.
+        new_row = self._create_row(0)  # Temp index, will be fixed by re-indexing
+        self._rows_layout.insertWidget(0, new_row)
+        self._floor_rows.insert(0, new_row)  # Add to the start of the list
         self._re_index_floors()
 
-    @Slot(FacadeStrip)
-    def _remove_strip(self, strip_to_remove: FacadeStrip):
-        """Removes a specific strip from the active list and the layout."""
-        target_list = self._structured_strips if self.mode == REPEATABLE else self._sandbox_strips
-        if strip_to_remove in target_list:
-            target_list.remove(strip_to_remove)
+    @Slot(FloorRowWidget)
+    def _remove_row(self, row_to_remove: FloorRowWidget):
+        """Removes a specific floor row from the list and the layout."""
+        if row_to_remove in self._floor_rows:
+            self._floor_rows.remove(row_to_remove)
 
-        self._strips_layout.removeWidget(strip_to_remove)
-        strip_to_remove.deleteLater()
+        self._rows_layout.removeWidget(row_to_remove)
+        row_to_remove.deleteLater()
         self._re_index_floors()
 
-    @Slot(FacadeStrip)
-    def _move_strip_up(self, strip_to_move: FacadeStrip):
-        """Moves a given strip up by one position in the layout."""
-        # Find the current visual index of the strip.
-        index = self._strips_layout.indexOf(strip_to_move)
-        # Cannot move up if it's already at the top (index 0).
+    @Slot(FloorRowWidget)
+    def _move_row_up(self, row_to_move: FloorRowWidget):
+        """Moves a given row up by one position in the layout and internal list."""
+        index = self._floor_rows.index(row_to_move)
         if index > 0:
-            # Remove the strip from its current position.
-            self._strips_layout.removeWidget(strip_to_move)
-            # Re-insert it one position higher (index - 1).
-            self._strips_layout.insertWidget(index - 1, strip_to_move)
-            # Update all floor names and regenerate the pattern string.
+            # Reorder in the list first
+            self._floor_rows.insert(index - 1, self._floor_rows.pop(index))
+            # Then update the UI to match
+            self._rows_layout.removeWidget(row_to_move)
+            self._rows_layout.insertWidget(index - 1, row_to_move)
             self._re_index_floors()
 
-    @Slot(FacadeStrip)
-    def _move_strip_down(self, strip_to_move: FacadeStrip):
-        """Moves a given strip down by one position in the layout."""
-        # Find the current visual index of the strip.
-        index = self._strips_layout.indexOf(strip_to_move)
-        # Cannot move down if it's already at the bottom.
-        if index < self._strips_layout.count() - 1:
-            # Remove the strip from its current position.
-            self._strips_layout.removeWidget(strip_to_move)
-            # Re-insert it one position lower (index + 1).
-            self._strips_layout.insertWidget(index + 1, strip_to_move)
-            # Update all floor names and regenerate the pattern string.
+    @Slot(FloorRowWidget)
+    def _move_row_down(self, row_to_move: FloorRowWidget):
+        """Moves a given row down by one position in the layout and internal list."""
+        index = self._floor_rows.index(row_to_move)
+        if index < len(self._floor_rows) - 1:
+            # Reorder in the list first
+            self._floor_rows.insert(index + 1, self._floor_rows.pop(index))
+            # Then update the UI to match
+            self._rows_layout.removeWidget(row_to_move)
+            self._rows_layout.insertWidget(index + 1, row_to_move)
             self._re_index_floors()
 
     def _re_index_floors(self):
         """
-        Updates the floor index and label for all visible strips.
+        Updates the floor index and label for all visible rows.
         The index is calculated top-to-bottom (0 = Ground Floor at the bottom).
         """
-        num_floors = self._strips_layout.count()
-        for i in range(num_floors):
-            strip: FacadeStrip = self._strips_layout.itemAt(i).widget()
-            if not strip:
-                continue
-            # The visual item at index `i` (from top) corresponds to floor `num_floors - 1 - i`.
+        num_floors = len(self._floor_rows)
+        for i, row in enumerate(self._floor_rows):
+            # The row at visual index `i` (from top) corresponds to floor `num_floors - 1 - i`.
             new_floor_idx = num_floors - 1 - i
-            strip.floor_index = new_floor_idx
-            strip.header.update_label(new_floor_idx)
+            row.floor_index = new_floor_idx
+            row.header.update_floor_label(new_floor_idx)
+
         self._regenerate_and_emit_pattern()
+        self._update_column_widths()  # NEW: Call the adaptive width logic
 
     def _regenerate_and_emit_pattern(self):
-        """Helper to generate the pattern string from the UI and emit the changed signal."""
-        self.patternChanged.emit(self.get_pattern_string())
+        """Helper to generate the JSON string from the UI and emit the changed signal."""
+        self.patternChanged.emit(self.get_data_as_json())
 
-
-    def redraw(self) -> None:
+    def _update_column_widths(self):
         """
-        Forces a full redraw of all module widgets and regenerates the
-        output pattern string.
-
-        This is useful when external factors, like a change in the icon set,
-        require the canvas to update its appearance without changing its
-        underlying structure.
+        Implements the adaptive column width logic...
         """
-        all_strips = self._structured_strips + self._sandbox_strips
+        if not self._floor_rows:
+            return
 
-        # 1. Iterate through every strip that exists, visible or not.
-        for strip in all_strips:
-            if not isinstance(strip, FacadeStrip): continue
+        max_widths = [0, 0, 0, 0]
+        for row in self._floor_rows:
+            for i, cell in enumerate(row.facade_cells):
+                layout = cell.module_container_layout
+                margins = cell.contentsMargins()
 
-            for j in range(strip.module_container_layout.count()):
-                if isinstance(group := strip.module_container_layout.itemAt(j).widget(), GroupWidget):
-                    for k in range(group.layout().count()):
-                        if isinstance(module := group.layout().itemAt(k).widget(), ModuleWidget):
-                            # Call the refresh method on every single module widget.
-                            module.refresh_icon()
+                content_width = 0
+                if layout.count() > 0:
+                    content_width = layout.sizeHint().width()
 
-        # 2. After all icons are updated, regenerate the pattern for the active view.
-        self._regenerate_and_emit_pattern()
+                ideal_width = content_width + margins.left() + margins.right()
+                max_widths[i] = max(max_widths[i], ideal_width)
+
+        # Apply the maximum widths to all cells in each column.
+        for row in self._floor_rows:
+            for i, cell in enumerate(row.facade_cells):
+                # --- THIS IS THE FIX ---
+                cell.setFixedWidth(max_widths[i])
+
+        # Apply the maximum widths to all cells in each column.
+        # We use setMinimumWidth to ensure they don't get smaller.
+        for row in self._floor_rows:
+            for i, cell in enumerate(row.facade_cells):
+                cell.setMinimumWidth(max_widths[i])
+
+    # Note: The `redraw` method from the original file may need to be adapted
+    # if you still need it, by iterating through the new structure.

@@ -1,25 +1,35 @@
 from __future__ import annotations
+import json
+
 from PySide6.QtCore import Qt, Slot, Signal
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QGroupBox, QToolBar, QScrollArea, QSplitter, QPushButton, QSizePolicy )
+    QWidget, QVBoxLayout, QGroupBox, QToolBar, QScrollArea, QSplitter, QPushButton
+)
 from PySide6.QtGui import QAction, QActionGroup
 
 from ui.pattern_editor.module_library import ModuleLibrary
 from ui.pattern_editor.pattern_text_panels import PatternInputPanel, PatternOutputPanel
 from ui.pattern_editor.pattern_area import PatternArea
 from ui.building_viewer.building_viewer import BuildingViewerApp
-from services.facade_segmentation import RepeatableExpressionWorker  # same worker you already use
+
+# NOTE: The RepeatableExpressionWorker is part of the 'Rigid' to 'Repeatable'
+# conversion feature, which is separate from our current refactor. We'll leave
+# it imported but be aware its functionality might need updating later if used.
+from services.facade_segmentation import RepeatableExpressionWorker
 
 class PatternEditorPanel(QWidget):
+    # This signal is still valid. It will now emit the full JSON string.
     patternChanged = Signal(str)
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self._library = ModuleLibrary()
-        self.pattern_area = PatternArea(3)
+        self.pattern_area = PatternArea(3) # PatternArea is already our new version
         self._input_panel = PatternInputPanel()
         self._output_panel = PatternOutputPanel()
         self._conversion_thread: RepeatableExpressionWorker | None = None
+
+        # --- UI Assembly (Largely Unchanged) ---
 
         # Library box
         library_box = QGroupBox("Module Library")
@@ -31,9 +41,7 @@ class PatternEditorPanel(QWidget):
         viewer_layout = QVBoxLayout(viewer_box)
         self.building_viewer = BuildingViewerApp()
         viewer_layout.addWidget(self.building_viewer)
-
         self.building_viewer.viewer.picked.connect(self._on_view_pick)
-
 
         # Canvas box
         canvas_box = QGroupBox("Pattern Canvas")
@@ -45,20 +53,21 @@ class PatternEditorPanel(QWidget):
         pattern_scroll.setWidget(self.pattern_area)
         canvas_layout.addWidget(pattern_scroll, 1)
 
+        # The 'Convert' button is part of the sandbox mode, its wiring is separate
+        # from our main data flow and can remain for now.
         self.convert_button = QPushButton("➤ Convert to Structured Pattern")
         self.convert_button.setFixedHeight(30)
         self.convert_button.setStyleSheet("font-weight: bold; background-color: #5a9b5a;")
         self.convert_button.hide()
         canvas_layout.addWidget(self.convert_button)
 
-
-
         # Top split: library | canvas | viewer
         visual_splitter = QSplitter(Qt.Horizontal)
         visual_splitter.addWidget(library_box)
         visual_splitter.addWidget(canvas_box)
         visual_splitter.addWidget(viewer_box)
-        visual_splitter.setSizes([250, 750, 600])
+        # --- NEW: Adjusted splitter sizes for the wider grid layout ---
+        visual_splitter.setSizes([250, 1000, 500])
 
         # Text I/O
         text_splitter = QSplitter(Qt.Horizontal)
@@ -72,28 +81,76 @@ class PatternEditorPanel(QWidget):
         main_splitter = QSplitter(Qt.Vertical)
         main_splitter.addWidget(visual_splitter)
         main_splitter.addWidget(text_io_box)
-        main_splitter.setStretchFactor(0, 3)
+        main_splitter.setStretchFactor(0, 4) # Give more vertical space to the visual editor
         main_splitter.setStretchFactor(1, 1)
 
         root_layout = QVBoxLayout(self)
         root_layout.addWidget(main_splitter)
 
-        # wiring
-        self._input_panel.patternApplied.connect(self.load_pattern)
-        self.pattern_area.patternChanged.connect(self._output_panel.update_pattern)
+
+        # ======================================================================
+        # --- WIRING CHANGES ---
+        # ======================================================================
+
+        # As requested, the text panels are now disconnected from the main app logic.
+        # They will still be visible, but they won't do anything.
+        # OLD: self._input_panel.patternApplied.connect(self.load_pattern)
+        # OLD: self.pattern_area.patternChanged.connect(self._output_panel.update_pattern)
+
+        # NEW: The main patternChanged signal from the PatternArea is now connected
+        # directly to this panel's own signal, to be used by the parent window.
         self.pattern_area.patternChanged.connect(self.patternChanged)
+
+        # Connect the convert button and library category changes
         self.convert_button.clicked.connect(self._on_convert_clicked)
+        # The 'redraw' method in PatternArea would need to be updated to work with the
+        # new structure if this feature is required. For now, the connection is kept.
         self._library.categoryChanged.connect(self.pattern_area.redraw)
 
-        # optional: preload a preview
-        # self.building_viewer.generate_building_1_kit()
+        # ======================================================================
+        # --- LOAD A DEFAULT PATTERN TO START THE APP ---
+        # ======================================================================
+        self._load_default_pattern()
+
+    def _load_default_pattern(self):
+        """Creates and loads a simple, default building pattern."""
+        default_facade = "<Wall00>"
+
+        # Create a Python dictionary representing a simple 3-floor building
+        default_building_data = [
+            # Ground Floor (Index 0 in JSON)
+            {
+                "Name": "Ground Floor",
+                "Pattern": [default_facade, default_facade, default_facade, default_facade],
+                "Height": 400
+            },
+            # Floor 1 (Index 1 in JSON)
+            {
+                "Name": "Floor 1",
+                "Pattern": [default_facade, default_facade, default_facade, default_facade],
+                "Height": 400
+            },
+            # Floor 2 (Index 2 in JSON)
+            {
+                "Name": "Floor 2",
+                "Pattern": [default_facade, default_facade, default_facade, default_facade],
+                "Height": 400
+            }
+        ]
+
+        # Convert the Python data to a JSON string
+        default_json_str = json.dumps(default_building_data)
+
+        # Use our existing public method to load this data
+        self.load_pattern(default_json_str)
 
     def _on_view_pick(self, info: dict):
-        # info: {'facade': 'front', 'floor': 2, 'module': 'Door01', ...}
+        # This functionality remains unchanged.
         print("Picked:", info)
 
 
     def _create_canvas_toolbar(self) -> QToolBar:
+        # This functionality remains unchanged.
         tb = QToolBar("Canvas Mode")
         tb.setMovable(False)
 
@@ -103,6 +160,7 @@ class PatternEditorPanel(QWidget):
         tb.addAction(self.act_structured)
         tb.addAction(self.act_sandbox)
 
+        # Debug buttons can remain for now
         btn_kit = QAction("Preview: Kit", self)
         btn_bill = QAction("Preview: Billboard", self)
         tb.addSeparator()
@@ -122,37 +180,48 @@ class PatternEditorPanel(QWidget):
 
     @Slot(str)
     def set_editor_mode(self, mode: str):
+        # This functionality remains largely unchanged.
         self.pattern_area.set_mode(mode)
         self.convert_button.setVisible(mode == "Rigid")
         self.act_structured.setChecked(mode == "Repeatable")
         self.act_sandbox.setChecked(mode == "Rigid")
 
+
+    # NOTE: The conversion logic now operates on the JSON output.
+    # It will need to be adapted to extract the relevant facade string
+    # from the JSON before sending it to the AI worker.
+    # This is a future task if this feature is to be used.
     @Slot()
     def _on_convert_clicked(self):
-        rigid = self.pattern_area.get_pattern_string()
-        if not rigid.strip() or rigid == "[]":
-            print("Sandbox is empty.")
-            return
-        model = "gpt-4o-mini"
-        self._conversion_thread = RepeatableExpressionWorker(rigid, model, self)
-        self._conversion_thread.result_ready.connect(self._on_conversion_success)
-        self._conversion_thread.error.connect(lambda msg: print(f"Conversion Error: {msg}"))
-        self._conversion_thread.finished.connect(self._conversion_thread.deleteLater)
-        self._conversion_thread.start()
-        self.convert_button.setEnabled(False)
-        self.convert_button.setText("Converting...")
+        # For now, we'll just print a notice that this needs an update.
+        print("NOTE: 'Convert to Structured' feature needs to be adapted for the new JSON data model.")
+        # OLD LOGIC:
+        # rigid = self.pattern_area.get_pattern_string()
+        # if not rigid.strip() or rigid == "[]":
+        #     print("Sandbox is empty.")
+        #     return
+        # model = "gpt-4o-mini"
+        # self._conversion_thread = RepeatableExpressionWorker(rigid, model, self)
+        # self._conversion_thread.result_ready.connect(self._on_conversion_success)
+        # self._conversion_thread.error.connect(lambda msg: print(f"Conversion Error: {msg}"))
+        # self._conversion_thread.finished.connect(self._conversion_thread.deleteLater)
+        # self._conversion_thread.start()
+        # self.convert_button.setEnabled(False)
+        # self.convert_button.setText("Converting...")
 
-    @Slot(str)
-    def _on_conversion_success(self, structured: str):
-        self.load_pattern(structured)
-        self.set_editor_mode("Repeatable")
-        self.convert_button.setEnabled(True)
-        self.convert_button.setText("➤ Convert to Structured Pattern")
 
+    # The public 'load_pattern' method needs to be updated to expect JSON
     @Slot(str)
-    def load_pattern(self, pattern_str: str):
+    def load_pattern(self, pattern_json_str: str):
+        """
+        Public slot to load a pattern from a JSON string.
+        This is the new entry point for loading data from outside.
+        """
         try:
-            self.pattern_area.load_from_string(pattern_str, library=self._library)
-            self._input_panel._editor.setPlainText(pattern_str)
+            # We delegate the entire loading process to our new PatternArea
+            self.pattern_area.load_from_json(pattern_json_str)
         except Exception as e:
-            print(f"Error loading pattern: {e}")
+            print(f"Error loading pattern in PatternEditorPanel: {e}")
+
+    # Note: The _on_conversion_success slot would also need updating
+    # to correctly handle the returned pattern from the AI.
