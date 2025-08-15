@@ -1,8 +1,8 @@
 from __future__ import annotations
 from typing import Dict, Any, List
 
-from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QFrame
+from PySide6.QtCore import Signal, QObject
 
 from domain.grammar import REPEATABLE, Group
 from domain.grammar import parse_facade_string
@@ -53,7 +53,6 @@ class FloorRowWidget(QWidget):
         root_layout.setSpacing(5)
         root_layout.addWidget(self.header)
 
-        # Helper function to create a styled vertical line
         def create_separator() -> QFrame:
             line = QFrame()
             line.setFrameShape(QFrame.Shape.VLine)
@@ -65,23 +64,25 @@ class FloorRowWidget(QWidget):
         root_layout.addWidget(create_separator())
         root_layout.addWidget(self.cell_left)
         root_layout.addWidget(create_separator())
-        root_layout.addWidget(self.cell_back,)
+        root_layout.addWidget(self.cell_back)
         root_layout.addWidget(create_separator())
         root_layout.addWidget(self.cell_right)
-
         root_layout.addStretch(1)
-
 
         # --- Signal Connections ---
         self.header.remove_requested.connect(lambda: self.remove_requested.emit(self))
         self.header.move_up_requested.connect(lambda: self.move_up_requested.emit(self))
         self.header.move_down_requested.connect(lambda: self.move_down_requested.emit(self))
         for cell in self.facade_cells:
-            cell.structureChanged.connect(self.structureChanged.emit)
-        self.header.name_edit.textChanged.connect(self.structureChanged.emit)
-        self.header.height_edit.textChanged.connect(self.structureChanged.emit)
+            cell.structureChanged.connect(self.structureChanged)
+        self.header.name_edit.textChanged.connect(self.structureChanged)
+        self.header.height_edit.textChanged.connect(self.structureChanged)
 
         self.header.update_floor_label(self.floor_index)
+
+
+
+
 
     def get_floor_data(self) -> Dict[str, Any]:
         """
