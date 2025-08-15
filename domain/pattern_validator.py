@@ -11,12 +11,11 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Callable, List
 
-from domain.grammar import GrammarError, GroupKind, Pattern, parse
+from domain.grammar import GroupKind, Pattern, Floor
 
 __all__ = [
     "Severity",
     "ValidationIssue",
-    "validate",
     "validate_pattern",
 ]
 
@@ -42,39 +41,58 @@ class ValidationIssue:
     def __str__(self) -> str:  # noqa: DunderStr
         return f"[{self.severity}] line {self.line}: {self.message}"
 
-
 # ---------------------------------------------------------------------------
-# Rule helpers
+# Rule Definitions
 # ---------------------------------------------------------------------------
 
 def _rule_at_least_one_fill(pattern: Pattern) -> List[ValidationIssue]:
-    if any(g.kind is GroupKind.FILL for fl in pattern.floors for g in fl):
-        return []
+    """
+    Checks if the entire building pattern contains at least one <fill> group
+    across any facade on any floor.
+    """
+    # We now need to iterate through the new multi-facade structure.
+    for floor in pattern.floors:
+        for facade_groups in floor.facades.values():
+            for group in facade_groups:
+                if group.kind is GroupKind.FILL:
+                    return []  # Found one, rule passes.
+
+    # If we finish all loops without finding a fill group, the rule fails.
     return [
         ValidationIssue(
-            line=-1,
-            message="Pattern should contain at least one <fill> group",  # noqa: E501
+            line=-1,  # This is a global issue, not tied to a specific floor.
+            message="Pattern should contain at least one <fill> group",
             severity=Severity.WARNING,
         )
     ]
 
 
+# ---------------------------------------------------------------------------
+# Rule helpers
+# ---------------------------------------------------------------------------
+
+# The list of rules to apply. Add new rule functions here in the future.
 _RULES: List[Callable[[Pattern], List[ValidationIssue]]] = [
     _rule_at_least_one_fill,
 ]
-
 
 # ---------------------------------------------------------------------------
 # Public façade
 # ---------------------------------------------------------------------------
 
 def validate_pattern(pattern: Pattern) -> List[ValidationIssue]:
-    """Run semantic checks on an already‑parsed :class:`Pattern`."""
+    """
+    The main entry point for validation.
+    Runs all semantic checks on an already-parsed Pattern object.
+    """
     issues: List[ValidationIssue] = []
     for rule in _RULES:
         issues.extend(rule(pattern))
     return issues
 
+# ---------------------------------------------------------------------------
+# Removed
+# ---------------------------------------------------------------------------
 
 def validate(pattern_str: str) -> List[ValidationIssue]:
     """Parse str and return semantic issues (syntax errors wrapped as ERROR)."""

@@ -28,22 +28,19 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Sequence
+from typing import List, Sequence, Dict, Any
 
 __all__ = [
     "GrammarError",
     "GroupKind",
     "Module",
     "Group",
+    "Floor",  # NEW
     "Pattern",
-    "parse",
-    "validate",
-    "parse_pattern",
-    "validate_pattern",
+    "parse_building_json",  # NEW (replaces old 'parse')
+    "parse_facade_string",  # NEW (repurposed from old 'parse_line')
     "REPEATABLE",
     "RIGID",
-    "fix_facade_expression",
-    "sanitize_rigid_for_sandbox"
 ]
 
 
@@ -125,26 +122,23 @@ class Group:
 
 
 @dataclass
+class Floor:
+    """Represents a single floor with its metadata and four facades."""
+    name: str
+    height: int
+    # Facades are stored in a dictionary, keyed by "front", "left", etc.
+    facades: Dict[str, List[Group]] = field(default_factory=dict)
+
+
+@dataclass
 class Pattern:
-    """Entire multi‑floor façade pattern.
+    """Represents the entire multi-floor, multi-facade building structure."""
+    # A Pattern is now a list of the new Floor objects.
+    floors: List[Floor] = field(default_factory=list)
 
-    The *ground floor* is conventionally the **last** line in the string
-    representation – aligning with Houdini conventions (PRD §Scope).
-    """
-
-    floors: List[List[Group]] = field(default_factory=list)
-
-    # Serialisation ---------------------------------------------------------
-    def to_string(self) -> str:
-        """Canonical grammar string (no extraneous whitespace)."""
-        return "\n".join("-".join(g.to_string() for g in floor) for floor in self.floors)
-
-    # Convenience -----------------------------------------------------------
-    def __str__(self) -> str:  # noqa: DunderStr
-        return self.to_string()
-
-    def __len__(self) -> int:  # noqa: DunderLen
+    def __len__(self) -> int:
         return len(self.floors)
+
 
 
 # ---------------------------------------------------------------------------
@@ -159,14 +153,6 @@ _GROUP_RE = re.compile(
     """,
     re.VERBOSE,
 )
-
-def parse_pattern(pattern_str: str) -> Pattern:
-    """Alias: clearer name for external callers."""
-    return parse(pattern_str)
-
-def validate_pattern(pattern_str: str) -> None:
-    """Alias: clearer name for external callers."""
-    return validate(pattern_str)
 
 def _parse_group(token: str) -> Group:
     """Transform raw *token* into a validated :class:`Group`."""
@@ -184,6 +170,72 @@ def _parse_group(token: str) -> Group:
     count = int(m.group("count") or "1")
     modules = [Module(name.strip()) for name in inner.split("-")]
     return Group(kind=GroupKind.RIGID, modules=modules, repeat=count)
+
+def parse_facade_string(facade_str: str) -> List[Group]:
+    """
+    Parses a single facade pattern string (e.g., '<A>[B]2') into a list of Groups.
+    This replaces the old 'parse_line' functionality.
+    """
+    line = facade_str.strip()
+    if not line:
+        return []  # An empty facade string is valid and results in an empty list.
+
+    tokens = [m.group(0) for m in _GROUP_RE.finditer(line)]
+    if "".join(tokens) != line.replace(" ", ""):
+        raise GrammarError(f"Unexpected characters outside groups: '{line}'")
+
+    return [_parse_group(tok.strip()) for tok in tokens]
+
+def parse_building_json(building_data: List[Dict[str, Any]]) -> Pattern:
+    """
+    The new main parser. It takes a Python data structure (from JSON) and
+    builds the complete, validated Pattern object.
+    """
+    if not isinstance(building_data, list):
+        raise GrammarError("Building data must be a list of floor objects.")
+
+    pattern = Pattern()
+    facade_order = ["front", "left", "back", "right"]
+
+    for i, floor_dict in enumerate(building_data):
+        if not isinstance(floor_dict, dict):
+            raise GrammarError(f"Floor {i} data is not a valid object.")
+
+        name = floor_dict.get("Name")
+        height = floor_dict.get("Height")
+        pattern_array = floor_dict.get("Pattern", [])
+
+        if name is None or height is None:
+            raise GrammarError(f"Floor {i} is missing 'Name' or 'Height'.")
+
+        if not isinstance(pattern_array, list) or len(pattern_array) != 4:
+            raise GrammarError(
+                f"Floor '{name}' must have a 'Pattern' array with exactly 4 strings."
+            )
+
+        new_floor = Floor(name=str(name), height=int(height))
+
+        for idx, facade_key in enumerate(facade_order):
+            facade_pattern_string = pattern_array[idx]
+            # Parse each facade string individually
+            new_floor.facades[facade_key] = parse_facade_string(facade_pattern_string)
+
+        pattern.floors.append(new_floor)
+
+    return pattern
+
+# ---------------------------------------------------------------------------
+# Removed?
+# ---------------------------------------------------------------------------
+
+
+def parse_pattern(pattern_str: str) -> Pattern:
+    """Alias: clearer name for external callers."""
+    return parse(pattern_str)
+
+def validate_pattern(pattern_str: str) -> None:
+    """Alias: clearer name for external callers."""
+    return validate(pattern_str)
 
 def _split_line(line: str) -> Sequence[str]:
     """Return the sequence of <fill> / [rigid]n groups exactly as they appear.

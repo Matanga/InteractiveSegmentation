@@ -52,7 +52,7 @@ class PyVistaViewerWidget(QtInteractor):
             i_size=self._grid_size,
             j_size=self._grid_size,
             i_resolution=32,
-            j_resolution=32,
+            j_resolution=32
         )
         grid_actor = self.add_mesh(grid_mesh, style="wireframe", color="darkgrey")
         self._non_pickable_actors.add(grid_actor)
