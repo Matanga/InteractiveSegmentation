@@ -23,7 +23,7 @@ class PatternArea(QWidget):
         self._root_layout.setAlignment(Qt.AlignTop)
 
         self._rows_layout = QVBoxLayout()
-        self._rows_layout.setSpacing(8)
+        self._rows_layout.setSpacing(5)
         self._rows_layout.setAlignment(Qt.AlignTop)
         self._root_layout.addLayout(self._rows_layout)
 

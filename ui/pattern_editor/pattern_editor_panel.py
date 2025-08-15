@@ -3,7 +3,7 @@ import json
 
 from PySide6.QtCore import Qt, Slot, Signal
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QGroupBox, QToolBar, QScrollArea, QSplitter, QPushButton
+    QWidget, QVBoxLayout, QGroupBox, QToolBar, QScrollArea, QSplitter, QPushButton, QFrame
 )
 from PySide6.QtGui import QAction, QActionGroup
 
@@ -25,12 +25,12 @@ class PatternEditorPanel(QWidget):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self._library = ModuleLibrary()
-        self.pattern_area = PatternArea(3) # PatternArea is already our new version
+        self.pattern_area = PatternArea(3)
         self._input_panel = PatternInputPanel()
         self._output_panel = PatternOutputPanel()
         self._conversion_thread: RepeatableExpressionWorker | None = None
 
-        # --- UI Assembly (Largely Unchanged) ---
+        # --- UI Assembly ---
 
         # Library box
         library_box = QGroupBox("Module Library")
@@ -47,33 +47,43 @@ class PatternEditorPanel(QWidget):
         # Canvas box
         canvas_box = QGroupBox("Pattern Canvas")
         canvas_layout = QVBoxLayout(canvas_box)
+        canvas_layout.setContentsMargins(4, 4, 4, 4)
+
         canvas_toolbar = self._create_canvas_toolbar()
 
-        self.column_header = ColumnHeaderWidget() # Create the header
+        # A new layout to hold the header and scroll area seamlessly
+        content_layout = QVBoxLayout()
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(0) # No space between header and rows
 
+        self.column_header = ColumnHeaderWidget()
 
-        canvas_layout.addWidget(canvas_toolbar)
-        canvas_layout.addWidget(self.column_header)
         pattern_scroll = QScrollArea()
-
         pattern_scroll.setWidgetResizable(True)
         pattern_scroll.setWidget(self.pattern_area)
-        canvas_layout.addWidget(pattern_scroll, 1)
+        pattern_scroll.setFrameShape(QFrame.Shape.NoFrame) # Removes border
 
-        # The 'Convert' button is part of the sandbox mode, its wiring is separate
-        # from our main data flow and can remain for now.
+        # Assemble the content_layout
+        content_layout.addWidget(self.column_header)
+        content_layout.addWidget(pattern_scroll, 1) # Scroll area stretches
+
+        # Assemble the main canvas_layout
+        canvas_layout.addWidget(canvas_toolbar)
+        canvas_layout.addLayout(content_layout, 1) # Content layout stretches
+
         self.convert_button = QPushButton("➤ Convert to Structured Pattern")
         self.convert_button.setFixedHeight(30)
         self.convert_button.setStyleSheet("font-weight: bold; background-color: #5a9b5a;")
         self.convert_button.hide()
         canvas_layout.addWidget(self.convert_button)
 
+        # --- Main Window Splitters ---
+
         # Top split: library | canvas | viewer
         visual_splitter = QSplitter(Qt.Horizontal)
         visual_splitter.addWidget(library_box)
         visual_splitter.addWidget(canvas_box)
         visual_splitter.addWidget(viewer_box)
-        # --- NEW: Adjusted splitter sizes for the wider grid layout ---
         visual_splitter.setSizes([250, 1000, 500])
 
         # Text I/O
@@ -88,38 +98,19 @@ class PatternEditorPanel(QWidget):
         main_splitter = QSplitter(Qt.Vertical)
         main_splitter.addWidget(visual_splitter)
         main_splitter.addWidget(text_io_box)
-        main_splitter.setStretchFactor(0, 4) # Give more vertical space to the visual editor
+        main_splitter.setStretchFactor(0, 4)
         main_splitter.setStretchFactor(1, 1)
 
         root_layout = QVBoxLayout(self)
         root_layout.addWidget(main_splitter)
 
-
-        # ======================================================================
-        # --- WIRING CHANGES ---
-        # ======================================================================
-
-        # As requested, the text panels are now disconnected from the main app logic.
-        # They will still be visible, but they won't do anything.
-        # OLD: self._input_panel.patternApplied.connect(self.load_pattern)
-        # OLD: self.pattern_area.patternChanged.connect(self._output_panel.update_pattern)
-
-        # NEW: The main patternChanged signal from the PatternArea is now connected
-        # directly to this panel's own signal, to be used by the parent window.
+        # --- Signal Connections ---
         self.pattern_area.patternChanged.connect(self.patternChanged)
-
-        # Connect the convert button and library category changes
         self.convert_button.clicked.connect(self._on_convert_clicked)
-        # The 'redraw' method in PatternArea would need to be updated to work with the
-        # new structure if this feature is required. For now, the connection is kept.
         self._library.categoryChanged.connect(self.pattern_area.redraw)
-
         self.pattern_area.columnWidthsChanged.connect(self.column_header.update_column_widths)
 
-
-        # ======================================================================
-        # --- LOAD A DEFAULT PATTERN TO START THE APP ---
-        # ======================================================================
+        # --- Load a default pattern on startup ---
         self._load_default_pattern()
 
     def _load_default_pattern(self):

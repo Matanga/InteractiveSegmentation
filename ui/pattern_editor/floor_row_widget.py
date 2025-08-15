@@ -25,7 +25,7 @@ class FloorRowWidget(QWidget):
         self.floor_index = floor_idx
         self.mode = mode
 
-        # --- Create Child Widgets ---
+        # --- Create Child Widgets (Unchanged) ---
         self.header = FloorHeaderWidget()
         self.cell_front = FacadeCellWidget(mode=self.mode)
         self.cell_left = FacadeCellWidget(mode=self.mode)
@@ -35,27 +35,18 @@ class FloorRowWidget(QWidget):
             self.cell_front, self.cell_left, self.cell_back, self.cell_right
         ]
 
-        # --- Layout with Separators ---
+        # --- SIMPLIFIED Layout (Separators Removed) ---
         root_layout = QHBoxLayout(self)
         root_layout.setContentsMargins(0, 0, 0, 0)
-        root_layout.setSpacing(5)
+        root_layout.setSpacing(5)  # The spacing between widgets now creates the gap
         root_layout.addWidget(self.header)
-
-        def create_separator() -> QFrame:
-            line = QFrame(); line.setFrameShape(QFrame.Shape.VLine)
-            line.setFrameShadow(QFrame.Shadow.Sunken)
-            line.setStyleSheet("QFrame { background-color: #2a2a2a; }"); return line
-
         root_layout.addWidget(self.cell_front)
-        root_layout.addWidget(create_separator())
         root_layout.addWidget(self.cell_left)
-        root_layout.addWidget(create_separator())
         root_layout.addWidget(self.cell_back)
-        root_layout.addWidget(create_separator())
         root_layout.addWidget(self.cell_right)
         root_layout.addStretch(1)
 
-        # --- Signal Connections ---
+        # --- Signal Connections (Unchanged) ---
         self.header.remove_requested.connect(lambda: self.remove_requested.emit(self))
         self.header.move_up_requested.connect(lambda: self.move_up_requested.emit(self))
         self.header.move_down_requested.connect(lambda: self.move_down_requested.emit(self))
