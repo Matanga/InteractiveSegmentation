@@ -10,8 +10,9 @@ from PySide6.QtGui import QAction, QActionGroup
 from ui.pattern_editor.module_library import ModuleLibrary
 from ui.pattern_editor.pattern_text_panels import PatternInputPanel, PatternOutputPanel
 from ui.pattern_editor.pattern_area import PatternArea
-from ui.building_viewer.building_viewer import BuildingViewerApp
+from ui.pattern_editor.column_header_widget import ColumnHeaderWidget
 
+from ui.building_viewer.building_viewer import BuildingViewerApp
 # NOTE: The RepeatableExpressionWorker is part of the 'Rigid' to 'Repeatable'
 # conversion feature, which is separate from our current refactor. We'll leave
 # it imported but be aware its functionality might need updating later if used.
@@ -47,8 +48,14 @@ class PatternEditorPanel(QWidget):
         canvas_box = QGroupBox("Pattern Canvas")
         canvas_layout = QVBoxLayout(canvas_box)
         canvas_toolbar = self._create_canvas_toolbar()
+
+        self.column_header = ColumnHeaderWidget() # Create the header
+
+
         canvas_layout.addWidget(canvas_toolbar)
+        canvas_layout.addWidget(self.column_header)
         pattern_scroll = QScrollArea()
+
         pattern_scroll.setWidgetResizable(True)
         pattern_scroll.setWidget(self.pattern_area)
         canvas_layout.addWidget(pattern_scroll, 1)
@@ -107,6 +114,9 @@ class PatternEditorPanel(QWidget):
         # new structure if this feature is required. For now, the connection is kept.
         self._library.categoryChanged.connect(self.pattern_area.redraw)
 
+        self.pattern_area.columnWidthsChanged.connect(self.column_header.update_column_widths)
+
+
         # ======================================================================
         # --- LOAD A DEFAULT PATTERN TO START THE APP ---
         # ======================================================================
@@ -148,7 +158,6 @@ class PatternEditorPanel(QWidget):
         # This functionality remains unchanged.
         print("Picked:", info)
 
-
     def _create_canvas_toolbar(self) -> QToolBar:
         # This functionality remains unchanged.
         tb = QToolBar("Canvas Mode")
@@ -186,7 +195,6 @@ class PatternEditorPanel(QWidget):
         self.act_structured.setChecked(mode == "Repeatable")
         self.act_sandbox.setChecked(mode == "Rigid")
 
-
     # NOTE: The conversion logic now operates on the JSON output.
     # It will need to be adapted to extract the relevant facade string
     # from the JSON before sending it to the AI worker.
@@ -209,7 +217,6 @@ class PatternEditorPanel(QWidget):
         # self.convert_button.setEnabled(False)
         # self.convert_button.setText("Converting...")
 
-
     # The public 'load_pattern' method needs to be updated to expect JSON
     @Slot(str)
     def load_pattern(self, pattern_json_str: str):
@@ -222,6 +229,3 @@ class PatternEditorPanel(QWidget):
             self.pattern_area.load_from_json(pattern_json_str)
         except Exception as e:
             print(f"Error loading pattern in PatternEditorPanel: {e}")
-
-    # Note: The _on_conversion_success slot would also need updating
-    # to correctly handle the returned pattern from the AI.

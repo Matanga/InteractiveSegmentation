@@ -9,22 +9,15 @@ from services.pattern_preprocessor import preprocess_unreal_json_data
 from ui.pattern_editor.floor_row_widget import FloorRowWidget
 from ui.pattern_editor.module_item import GroupWidget, ModuleWidget
 
-
 class PatternArea(QWidget):
-    """
-    The main canvas for designing a building. It manages a vertical list of
-    FloorRowWidgets and handles top-level JSON serialization. It uses a manual
-    two-pass system to synchronize the widths of the facade columns for a
-    stable, grid-like appearance.
-    """
     patternChanged = Signal(str)
+    columnWidthsChanged = Signal(list)
 
     def __init__(self, num_floors: int = 3, parent: QWidget | None = None):
         super().__init__(parent)
         self.mode = REPEATABLE
         self._floor_rows: list[FloorRowWidget] = []
 
-        # --- Use a simple QVBoxLayout for the rows ---
         self._root_layout = QVBoxLayout(self)
         self._root_layout.setSpacing(8)
         self._root_layout.setAlignment(Qt.AlignTop)
@@ -44,8 +37,7 @@ class PatternArea(QWidget):
             self._add_row_at_top()
 
     def set_mode(self, new_mode: str):
-        if new_mode == self.mode or new_mode not in (REPEATABLE, RIGID):
-            return
+        if new_mode == self.mode or new_mode not in (REPEATABLE, RIGID): return
         self.mode = new_mode
         current_data_str = self.get_data_as_json()
         self.load_from_json(current_data_str)
@@ -62,16 +54,12 @@ class PatternArea(QWidget):
         except (json.JSONDecodeError, TypeError) as e:
             print(f"Error parsing or processing JSON: {e}")
             return
-
         self._clear_view()
-
         for floor_data in reversed(building_data):
             new_row = self._create_row(len(self._floor_rows))
             new_row.set_floor_data(floor_data)
-            # Add to the UI and the Python list
             self._rows_layout.addWidget(new_row)
             self._floor_rows.append(new_row)
-
         self._re_index_floors()
 
     def _create_row(self, floor_idx: int) -> FloorRowWidget:
@@ -79,10 +67,7 @@ class PatternArea(QWidget):
         row.remove_requested.connect(self._remove_row)
         row.move_up_requested.connect(self._move_row_up)
         row.move_down_requested.connect(self._move_row_down)
-        # Any change to a row's content will trigger our width update
-        # row.structureChanged.connect(self._update_and_regenerate)
         row.structureChanged.connect(self._schedule_update)
-
         return row
 
     def _clear_view(self):
@@ -90,12 +75,11 @@ class PatternArea(QWidget):
         while self._rows_layout.count():
             item = self._rows_layout.takeAt(0)
             if widget := item.widget():
-                widget.setParent(None)
-                widget.deleteLater()
+                widget.setParent(None); widget.deleteLater()
 
     @Slot()
     def _add_row_at_top(self):
-        new_row = self._create_row(0)
+        new_row = self._create_row(0) # Temp index
         self._rows_layout.insertWidget(0, new_row)
         self._floor_rows.insert(0, new_row)
         self._re_index_floors()
@@ -114,7 +98,6 @@ class PatternArea(QWidget):
         if index > 0:
             self._rows_layout.removeWidget(row_to_move)
             self._rows_layout.insertWidget(index - 1, row_to_move)
-            # Update the Python list to match the UI
             self._floor_rows.insert(index - 1, self._floor_rows.pop(index))
             self._re_index_floors()
 
@@ -124,59 +107,46 @@ class PatternArea(QWidget):
         if index < self._rows_layout.count() - 1:
             self._rows_layout.removeWidget(row_to_move)
             self._rows_layout.insertWidget(index + 1, row_to_move)
-            # Update the Python list to match the UI
             self._floor_rows.insert(index + 1, self._floor_rows.pop(index))
             self._re_index_floors()
 
     def _re_index_floors(self):
+        """
+        Updates the internal floor_index for all rows and schedules an update.
+        Crucially, it DOES NOT change the visible text names.
+        """
         num_floors = len(self._floor_rows)
         for i, row in enumerate(self._floor_rows):
             new_floor_idx = num_floors - 1 - i
             row.floor_index = new_floor_idx
-            row.header.update_floor_label(new_floor_idx)
         self._schedule_update()
 
     @Slot()
     def _schedule_update(self):
-        """
-        Schedules the actual update to run after the event loop has processed
-        pending layout changes. This prevents reading stale size hints.
-        """
+        """Schedules the update to run after the event loop has settled."""
         QTimer.singleShot(0, self._perform_update_and_regenerate)
 
     def _perform_update_and_regenerate(self):
-        """
-        This is the actual update logic that is now called deferred.
-        """
+        """The actual deferred update logic."""
         self._update_column_widths()
         self.patternChanged.emit(self.get_data_as_json())
 
-
-
     def _update_column_widths(self):
-        """
-        Manually synchronize column widths across all rows.
-        This is the core of the new layout logic.
-        """
-        if not self._floor_rows:
-            return
-
-        # Pass 1: Gather the maximum ideal width for each column
-        max_widths = [0, 0, 0, 0]  # front, left, back, right
+        """Manually synchronize column widths across all rows."""
+        if not self._floor_rows: return
+        max_widths = [0, 0, 0, 0]
         for row in self._floor_rows:
             for i, cell in enumerate(row.facade_cells):
-                # The size hint of the cell's layout tells us the ideal width of its content.
-                # This is the key to making the calculation work.
                 ideal_width = cell.module_container_layout.sizeHint().width()
-                # Add margins for a complete calculation
                 margins = cell.contentsMargins()
                 total_ideal = ideal_width + margins.left() + margins.right()
                 max_widths[i] = max(max_widths[i], total_ideal)
-
-        # Pass 2: Apply the calculated maximum width to every cell in each column
         for row in self._floor_rows:
             for i, cell in enumerate(row.facade_cells):
                 cell.setFixedWidth(max_widths[i])
+        header_width = self._floor_rows[0].header.width() if self._floor_rows else 150
+        final_widths = [header_width] + max_widths
+        self.columnWidthsChanged.emit(final_widths)
 
     def redraw(self):
         """Refreshes all module icons."""
