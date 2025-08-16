@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QAction, QActionGroup
 
+from ui.building_viewer.building_assembly_panel import BuildingAssemblyPanel
 from ui.pattern_editor.module_library import ModuleLibrary
 from ui.pattern_editor.pattern_text_panels import PatternInputPanel, PatternOutputPanel
 from ui.pattern_editor.pattern_area import PatternArea
@@ -43,6 +44,15 @@ class PatternEditorPanel(QWidget):
         self.building_viewer = BuildingViewerApp()
         viewer_layout.addWidget(self.building_viewer)
         self.building_viewer.viewer.picked.connect(self._on_view_pick)
+
+        self.assembly_panel = BuildingAssemblyPanel()
+
+        # --- NEW: Create a new container for the viewer and its controls ---
+        viewer_and_controls_widget = QWidget()
+        viewer_and_controls_layout = QVBoxLayout(viewer_and_controls_widget)
+        viewer_and_controls_layout.setContentsMargins(0, 0, 0, 0)
+        viewer_and_controls_layout.addWidget(viewer_box)
+        viewer_and_controls_layout.addWidget(self.assembly_panel)
 
         # Canvas box
         canvas_box = QGroupBox("Pattern Canvas")
@@ -83,7 +93,8 @@ class PatternEditorPanel(QWidget):
         visual_splitter = QSplitter(Qt.Horizontal)
         visual_splitter.addWidget(library_box)
         visual_splitter.addWidget(canvas_box)
-        visual_splitter.addWidget(viewer_box)
+        # visual_splitter.addWidget(viewer_box)
+        visual_splitter.addWidget(viewer_and_controls_widget)
         visual_splitter.setSizes([250, 1000, 500])
 
         # Text I/O
