@@ -126,3 +126,29 @@ class BuildingGenerator3D:
         texture = pyvista.Texture(image_as_array)
 
         return mesh, texture
+
+    def create_procedural_billboard(self, facade_image: Image.Image, procedural_width: int, procedural_height: int) -> \
+    Tuple[pyvista.DataSet, pyvista.Texture]:
+        """
+        Creates a single 3D plane (billboard) of a specific PROCEDURAL size,
+        textures it with the given image, and sets its pivot to the BOTTOM-CENTER.
+        """
+        # 1. Create the 3D plane using the provided PROCEDURAL dimensions.
+        mesh = pyvista.Plane(
+            center=(0, 0, 0),
+            i_size=procedural_width,
+            j_size=procedural_height,
+        )
+
+        # 2. Rotate to be vertical.
+        mesh.rotate_x(90, inplace=True)
+        mesh.rotate_y(180, inplace=True)
+
+        # 3. Translate so its BOTTOM-CENTER is at the origin (0,0,0).
+        mesh.translate((0, 0, procedural_height / 2), inplace=True)
+
+        # 4. Create the texture from the image (this part is the same).
+        image_as_array = np.flipud(np.array(facade_image))
+        texture = pyvista.Texture(image_as_array)
+
+        return mesh, texture

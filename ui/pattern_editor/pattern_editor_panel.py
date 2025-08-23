@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QAction, QActionGroup
 
 from domain.building_generator_2d import BuildingGenerator2D
-from domain.building_spec import BuildingDirector
+from domain.building_spec import BuildingDirector, PROCEDURAL_MODULE_HEIGHT
 from services.resources_loader import IconFiles
 from ui.building_viewer.building_assembly_panel import BuildingAssemblyPanel
 from ui.pattern_editor.module_library import ModuleLibrary
@@ -155,7 +155,7 @@ class PatternEditorPanel(QWidget):
             # Ground Floor (Index 0 in JSON)
             {
                 "Name": "Ground",
-                "Pattern": [floor_facade, window_facade1, floor_facade, default_facade],
+                "Pattern": [floor_facade, window_facade1, default_facade, default_facade],
                 "Height": 400
             },
             # Floor 1 (Index 1 in JSON)
@@ -205,16 +205,19 @@ class PatternEditorPanel(QWidget):
         btn_kit.triggered.connect(self.building_viewer.generate_building_1_kit)
         btn_bill.triggered.connect(self.building_viewer.generate_building_1_billboard)
 
-        tb.addSeparator()
-        btn_test_render = QAction("TEST: Render Facade Strip", self)
-        btn_test_render.triggered.connect(self._on_test_render_facade_strip)
-        tb.addAction(btn_test_render)
+        # tb.addSeparator()
+        # btn_test_render = QAction("TEST: Render Facade Strip", self)
+        # btn_test_render.triggered.connect(self._on_test_render_facade_strip)
+        # tb.addAction(btn_test_render)
 
         tb.addSeparator()
         btn_export_strips = QAction("TEST: Export All Strips", self)
         btn_export_strips.triggered.connect(self._on_test_export_all_strips)
         tb.addAction(btn_export_strips)
 
+        btn_test_3d = QAction("TEST: Render Ground Floor 3D", self)
+        btn_test_3d.triggered.connect(self._on_test_render_ground_floor_3d)
+        tb.addAction(btn_test_3d)
 
         grp = QActionGroup(self)
         grp.addAction(self.act_structured)
@@ -229,6 +232,52 @@ class PatternEditorPanel(QWidget):
         This can be used for features like exporting to a file.
         """
         return self.pattern_area.get_data_as_json()
+
+    @Slot()
+    def _on_test_render_ground_floor_3d(self):
+        """
+        A test function that renders just the ground floor of the current
+        design in the 3D viewer.
+        """
+        print("--- Running Ground Floor 3D Render Test ---")
+
+        # 1. Gather all the current UI data
+        floor_defs_json = self.get_floor_definitions_json()
+        b_width = int(self.assembly_panel.width_edit.text())
+        b_depth = int(self.assembly_panel.depth_edit.text())
+
+        # 2. Get the dictionary of all rendered images
+        all_images = generate_all_facade_strip_images(floor_defs_json, b_width, b_depth)
+
+        if not all_images:
+            print("3D Render Test FAILED: No images were generated.")
+            return
+
+        # 3. Filter for just the "Ground Floor" images
+        ground_floor_images = {
+            key: img for key, img in all_images.items() if key.startswith("Ground")
+        }
+        print(f'========{len(ground_floor_images)}')
+        if not ground_floor_images:
+            print("3D Render Test FAILED: No images found for 'Ground Floor'.")
+            return
+
+        # 4. Prepare the viewer and call the new placement method
+        self.building_viewer.viewer.clear_scene()
+
+        # Call the new private method with elevation 0
+        self.building_viewer._place_single_floor(
+            floor_name="Ground",
+            facade_strip_images=ground_floor_images,
+            building_width=b_width,
+            building_depth=b_depth,
+            elevation=0,
+            floor_height=PROCEDURAL_MODULE_HEIGHT  # Using our standard procedural height
+
+        )
+
+        self.building_viewer.viewer.reset_camera()
+        print("--- Ground Floor 3D Render Test Complete ---")
 
     @Slot()
     def _on_test_export_all_strips(self):

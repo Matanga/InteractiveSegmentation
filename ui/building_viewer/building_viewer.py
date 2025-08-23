@@ -12,7 +12,7 @@ from domain.building_generator_2d import BuildingGenerator2D
 from domain.building_spec import BuildingSpec, FacadeSpec, BuildingDirector, PROCEDURAL_MODULE_WIDTH, PROCEDURAL_MODULE_HEIGHT
 from services.resources_loader import IconFiles
 
-
+from PIL import Image
 Blueprint = Dict[str, Dict[int, List[str]]]  # side -> floor_idx -> [module_names]
 
 
@@ -214,3 +214,81 @@ class BuildingViewerApp(QWidget):
             self.viewer.suppress_rendering = False
 
         self.viewer.reset_camera()
+
+    def _place_single_floor(
+            self,
+            floor_name: str,
+            facade_strip_images: Dict[str, Image.Image],
+            building_width: int,
+            building_depth: int,
+            elevation: int,
+            floor_height: int
+    ):
+        """
+        Takes pre-rendered images for a single floor and places them as
+        billboards in the 3D scene at a specific elevation.
+        """
+        print("\n" + "=" * 20 + f" DEBUG: Placing Floor '{floor_name}' " + "=" * 20)
+        print(
+            f"  - Received building_width: {building_width}, building_depth: {building_depth}, elevation: {elevation}")
+
+        # --- Centering and Pivot Offsets ---
+        half_width = building_width / 2
+        half_depth = building_depth / 2
+
+        # Try to get the height from the front image, otherwise default to a reasonable value
+        # front_image = facade_strip_images.get(f"{floor_name}-front")
+        # image_height = front_image.height if front_image else 128  # Use ICON_PIXEL_HEIGHT as fallback
+        half_module_height_offset = PROCEDURAL_MODULE_HEIGHT / 2
+
+
+
+        print(f"  - Calculated half_width: {half_width}, half_depth: {half_depth}")
+        print(f"  - half_module_height_offset: {half_module_height_offset}")
+
+        facade_definitions = {
+            "front": {"rot": 180,   "pos": (0, half_depth, elevation), "size": building_width},
+            "back":  {"rot": 0, "pos": (0,  -half_depth, elevation), "size": building_width},
+            "left":  {"rot": 90,  "pos": (half_width, 0, elevation), "size": building_depth},
+            "right": {"rot": -90, "pos": ( -half_width, 0, elevation), "size": building_depth},
+        }
+
+        for side_name, side_data in facade_definitions.items():
+            print(f"\n--- Processing '{side_name}' facade ---")
+            image_key = f"{floor_name}-{side_name}"
+            strip_image = facade_strip_images.get(image_key)
+
+            if not strip_image:
+                print(f"  - SKIP: Strip image not found for key: '{image_key}'")
+                continue
+
+            print(f"  - FOUND strip image for '{image_key}' with size: {strip_image.size}")
+
+            mesh, tex = self.generator_3d.create_procedural_billboard(
+                facade_image=strip_image,
+                procedural_width=side_data["size"],
+                procedural_height=floor_height
+            )
+
+            # Create the 3D plane for this strip
+            # mesh, tex = self.generator_3d.create_facade_billboard(strip_image)
+            print(f"  - Initial mesh bounds (bottom-left pivot at origin): {mesh.bounds}")
+
+            # Apply rotation
+            mesh.rotate_z(side_data["rot"], inplace=True)
+            print(f"  - Mesh bounds AFTER rotation by {side_data['rot']} deg Z: {mesh.bounds}")
+
+            # Apply centering translation and final elevation
+            final_translation = (
+                side_data["pos"][0],
+                side_data["pos"][1],
+                elevation
+            )
+            print(f"  - Calculated final translation vector: {final_translation}")
+
+            mesh.translate(final_translation, inplace=True)
+            print(f"  - FINAL mesh bounds before adding to scene: {mesh.bounds}")
+
+            actor_name = f"{floor_name}_{side_name}"
+            self.viewer.add_managed_actor(actor_name, mesh, tex)
+            print(f"  - SUCCESS: Added actor '{actor_name}' to the viewer.")
