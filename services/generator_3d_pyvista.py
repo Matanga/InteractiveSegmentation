@@ -5,7 +5,7 @@ from services.resources_loader import IconFiles
 
 from PIL import Image
 import  numpy as np
-from domain.building_spec import MODULE_WIDTH,MODULE_HEIGHT
+from domain.building_spec import ICON_PIXEL_WIDTH,ICON_PIXEL_HEIGHT
 
 class BuildingGenerator3D:
     """
@@ -41,15 +41,15 @@ class BuildingGenerator3D:
         #    Its texture coordinates are generated correctly by default in this orientation.
         mesh = pyvista.Plane(
             center=(0, 0, 0),
-            i_size=MODULE_WIDTH,
-            j_size=MODULE_HEIGHT,
+            i_size=ICON_PIXEL_WIDTH,
+            j_size=ICON_PIXEL_HEIGHT,
         )
 
         # 2. Rotate the entire mesh -90 degrees around the X-axis to make it stand up.
         mesh.rotate_x(90, inplace=True)
 
         # 3. Translate the now-vertical mesh up so its bottom edge is on the Z=0 plane.
-        mesh.translate((MODULE_WIDTH / 2, 0, MODULE_HEIGHT / 2), inplace=True)
+        mesh.translate((ICON_PIXEL_WIDTH / 2, 0, ICON_PIXEL_HEIGHT / 2), inplace=True)
 
         return mesh
 
@@ -68,9 +68,9 @@ class BuildingGenerator3D:
                 module_mesh = self.create_module_mesh(module_name)
 
                 # 2. Calculate its final position in the facade
-                x_pos = module_idx * MODULE_WIDTH
+                x_pos = module_idx * ICON_PIXEL_WIDTH
                 y_pos = 0
-                z_pos = floor_idx * MODULE_HEIGHT
+                z_pos = floor_idx * ICON_PIXEL_HEIGHT
 
                 module_mesh.translate((x_pos, y_pos, z_pos), inplace=True)
 

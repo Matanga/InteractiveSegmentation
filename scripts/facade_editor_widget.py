@@ -9,7 +9,7 @@ from PySide6.QtCore import Qt
 # Import our building system components
 from domain.pattern_resolver import PatternResolver
 from domain.building_generator_2d import BuildingGenerator2D
-from domain.building_spec import MODULE_WIDTH, MODULE_HEIGHT
+from domain.building_spec import ICON_PIXEL_WIDTH, ICON_PIXEL_HEIGHT
 
 from services.resources_loader import IconFiles
 
@@ -41,7 +41,7 @@ class FacadeEditorWidget(QWidget):
             if not icon_set:
                 raise FileNotFoundError(f"Could not find '{icon_category}' icon category.")
             self.generator = generator or BuildingGenerator2D(icon_set=icon_set)
-            self.resolver = resolver or PatternResolver(default_module_width=MODULE_WIDTH)
+            self.resolver = resolver or PatternResolver(default_module_width=ICON_PIXEL_WIDTH)
         except Exception as e:
             error_layout = QVBoxLayout(self)
             error_label = QLabel(f"FATAL ERROR:\nCould not initialize backend.\n\n{e}")

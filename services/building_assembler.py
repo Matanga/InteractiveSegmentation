@@ -91,7 +91,7 @@ def assemble_building_blueprint(
         building_width: int,
         building_depth: int,
         total_building_height: int,
-        default_module_width: int = 100
+        default_module_width: int = 48
 ) -> Dict[str, List[List[str]]]:
     """
     The main orchestration service for creating a resolved building blueprint.

@@ -36,7 +36,7 @@ class BuildingAssemblyPanel(QWidget):
             editor.setFixedWidth(60)
 
         # Stacking Pattern Input
-        self.pattern_edit = QLineEdit("[Ground]<Floor 1>[Floor 2]")
+        self.pattern_edit = QLineEdit("[Ground]<Floor1>[Floor2]")
         self.pattern_edit.setToolTip(
             "Define the vertical stacking order of floors.\n"
             "Use < > for repeatable (fill) floors.\n"
@@ -83,10 +83,10 @@ class BuildingAssemblyPanel(QWidget):
         root_layout.addStretch(1) # Push everything to the top
 
         #  Add SIGNAL CONNECTIONS
-        self.width_edit.textChanged.connect(self.assemblyChanged.emit)
-        self.depth_edit.textChanged.connect(self.assemblyChanged.emit)
-        self.height_edit.textChanged.connect(self.assemblyChanged.emit)
-        self.pattern_edit.textChanged.connect(self.assemblyChanged.emit)
+        self.width_edit.textChanged.connect(self.assemblyChanged)
+        self.depth_edit.textChanged.connect(self.assemblyChanged)
+        self.height_edit.textChanged.connect(self.assemblyChanged)
+        self.pattern_edit.textChanged.connect(self.assemblyChanged)
 
         # --- Styling ---
         self.setStyleSheet("""

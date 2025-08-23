@@ -17,8 +17,12 @@ OPPOSING_SIDES = {
 }
 ALL_SIDES = ["front", "right", "back", "left"]
 MODULE_SIZE = 128
-MODULE_WIDTH = MODULE_SIZE
-MODULE_HEIGHT = MODULE_SIZE
+ICON_PIXEL_WIDTH = MODULE_SIZE
+ICON_PIXEL_HEIGHT = MODULE_SIZE
+
+PROCEDURAL_MODULE_WIDTH = 400
+PROCEDURAL_MODULE_HEIGHT = 400
+
 
 # --- Data Structures ---
 
@@ -34,7 +38,7 @@ class BuildingSpec:
     num_floors: int
     facades: Dict[str, FacadeSpec]
     camera_angle: int = 30
-    default_module_width: int = 128
+    default_module_width: int = ICON_PIXEL_WIDTH
     def __post_init__(self):
         if self.num_floors < 1:
             raise ValueError("Building must have at least 1 floor.")
@@ -50,7 +54,7 @@ class BuildingDirector:
         if not isinstance(spec, BuildingSpec):
             raise TypeError("BuildingDirector must be initialized with a BuildingSpec object.")
 
-        self.resolver = PatternResolver(default_module_width=MODULE_WIDTH)
+        self.resolver = PatternResolver(default_module_width=PROCEDURAL_MODULE_WIDTH)
         # The completed spec is now generated and normalized in one go.
         self.completed_spec = self._normalize_and_complete_spec(spec)
         self._blueprint_cache: Dict[str, Dict[int, List[str]]] | None = None

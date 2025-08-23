@@ -7,6 +7,9 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QAction, QActionGroup
 
+from domain.building_generator_2d import BuildingGenerator2D
+from domain.building_spec import BuildingDirector
+from services.resources_loader import IconFiles
 from ui.building_viewer.building_assembly_panel import BuildingAssemblyPanel
 from ui.pattern_editor.module_library import ModuleLibrary
 from ui.pattern_editor.pattern_text_panels import PatternInputPanel, PatternOutputPanel
@@ -18,6 +21,14 @@ from ui.building_viewer.building_viewer import BuildingViewerApp
 # conversion feature, which is separate from our current refactor. We'll leave
 # it imported but be aware its functionality might need updating later if used.
 from services.facade_segmentation import RepeatableExpressionWorker
+
+import services.building_assembler as assembler
+from services.facade_image_renderer import FacadeImageRenderer
+from PySide6.QtWidgets import QFileDialog
+
+from services.ui_adapter import prepare_spec_from_ui
+
+from services.building_image_exporter import generate_all_facade_strip_images
 
 class PatternEditorPanel(QWidget):
     # This signal is still valid. It will now emit the full JSON string.
@@ -133,26 +144,30 @@ class PatternEditorPanel(QWidget):
 
     def _load_default_pattern(self):
         """Creates and loads a simple, default building pattern."""
+        floor_facade ="<Wall00>[Door00-Window00]"
+        window_facade1 ="[Wall00]<Window00>[Wall00]"
+        window_facade2 ="<Window00-Wall00>"
+        window_facade3 ="[Window01]<Window00-Wall00>[Window01]"
         default_facade = "<Wall00>"
 
         # Create a Python dictionary representing a simple 3-floor building
         default_building_data = [
             # Ground Floor (Index 0 in JSON)
             {
-                "Name": "Ground Floor",
-                "Pattern": [default_facade, default_facade, default_facade, default_facade],
+                "Name": "Ground",
+                "Pattern": [floor_facade, window_facade1, floor_facade, default_facade],
                 "Height": 400
             },
             # Floor 1 (Index 1 in JSON)
             {
-                "Name": "Floor 1",
-                "Pattern": [default_facade, default_facade, default_facade, default_facade],
+                "Name": "Floor1",
+                "Pattern": [window_facade1, default_facade, window_facade1, window_facade2],
                 "Height": 400
             },
             # Floor 2 (Index 2 in JSON)
             {
-                "Name": "Floor 2",
-                "Pattern": [default_facade, default_facade, default_facade, default_facade],
+                "Name": "Floor2",
+                "Pattern": [window_facade3, window_facade2, window_facade3, window_facade2],
                 "Height": 400
             }
         ]
@@ -190,6 +205,17 @@ class PatternEditorPanel(QWidget):
         btn_kit.triggered.connect(self.building_viewer.generate_building_1_kit)
         btn_bill.triggered.connect(self.building_viewer.generate_building_1_billboard)
 
+        tb.addSeparator()
+        btn_test_render = QAction("TEST: Render Facade Strip", self)
+        btn_test_render.triggered.connect(self._on_test_render_facade_strip)
+        tb.addAction(btn_test_render)
+
+        tb.addSeparator()
+        btn_export_strips = QAction("TEST: Export All Strips", self)
+        btn_export_strips.triggered.connect(self._on_test_export_all_strips)
+        tb.addAction(btn_export_strips)
+
+
         grp = QActionGroup(self)
         grp.addAction(self.act_structured)
         grp.addAction(self.act_sandbox)
@@ -203,6 +229,95 @@ class PatternEditorPanel(QWidget):
         This can be used for features like exporting to a file.
         """
         return self.pattern_area.get_data_as_json()
+
+    @Slot()
+    def _on_test_export_all_strips(self):
+        """
+        A test function that calls the image factory and saves all the
+        generated images to the project root for inspection.
+        """
+        print("--- Running Export All Strips Test ---")
+
+        # 1. Gather all the current UI data
+        floor_defs_json = self.get_floor_definitions_json()
+        b_width = int(self.assembly_panel.width_edit.text())
+        b_depth = int(self.assembly_panel.depth_edit.text())
+
+        # 2. Call our new "factory" function to get the dictionary of images
+        all_images = generate_all_facade_strip_images(floor_defs_json, b_width, b_depth)
+
+        if not all_images:
+            print("Export Test FAILED: No images were generated.")
+            return
+
+        # 3. Save all the images to the project's root directory
+        import os
+        for image_key, image_obj in all_images.items():
+            # Sanitize the key to create a valid filename
+            filename = f"{image_key.replace(' ', '_')}.png"
+            save_path = os.path.join(os.getcwd(), filename)  # os.getcwd() gets the project root
+            try:
+                image_obj.save(save_path)
+                print(f"  > Saved '{filename}' successfully.")
+            except Exception as e:
+                print(f"  > FAILED to save '{filename}'. Error: {e}")
+
+        print("--- Export Test Complete ---")
+
+    @Slot()
+    def _on_test_render_facade_strip(self):
+        """
+        A simple, debuggable test to generate an image of a single facade strip.
+        It uses the proven UI -> Adapter -> Director -> Resolver -> 2D Generator pipeline.
+        """
+        print("--- Running Facade Strip Render Test ---")
+
+        # 1. Gather all the current UI data
+        floor_defs_json = self.get_floor_definitions_json()
+        b_width = int(self.assembly_panel.width_edit.text())
+        b_depth = int(self.assembly_panel.depth_edit.text())
+
+        try:
+            # 2. Use our new Adapter to create the BuildingSpec
+            spec = prepare_spec_from_ui(floor_defs_json, b_width, b_depth)
+            print("Adapter created BuildingSpec successfully.")
+
+            # 3. Use the existing BuildingDirector to get the resolved blueprint
+            director = BuildingDirector(spec)
+            blueprint = director.produce_blueprint()
+            print("BuildingDirector produced blueprint successfully.")
+
+            # Let's test the "front" facade, floor index 0 (the top floor in the old system)
+            front_blueprint = blueprint.get("front")
+            if not front_blueprint or 0 not in front_blueprint:
+                raise ValueError("Blueprint does not contain a 'front' facade for the top floor (index 0).")
+
+            # This is the resolved 1D list of modules for our target strip
+            target_strip_modules = front_blueprint[0]
+            print(f"Target strip modules to render: {target_strip_modules}")
+
+            # 4. Use the existing BuildingGenerator2D to render just that strip
+            icon_set = IconFiles.get_icons_for_category("Default")
+            generator = BuildingGenerator2D(icon_set)
+
+            # Call the proven, correct method
+            facade_strip_image = generator.assemble_flat_floor(target_strip_modules)
+            print("BuildingGenerator2D rendered image successfully.")
+
+        except Exception as e:
+            print(f"Render Test FAILED: Pipeline raised an exception: {e}")
+            import traceback
+            traceback.print_exc()
+            return
+
+        # 5. Save the final image so we can inspect it
+        if facade_strip_image:
+            save_path, _ = QFileDialog.getSaveFileName(
+                self, "Save Rendered Facade Strip", "rendered_strip.png", "PNG Images (*.png)"
+            )
+            if save_path:
+                facade_strip_image.save(save_path)
+                print(f"Render Test SUCCESS: Image saved to {save_path}")
 
     @Slot()
     def _on_design_changed(self):

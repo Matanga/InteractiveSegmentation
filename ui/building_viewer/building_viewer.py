@@ -9,7 +9,7 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout
 from ui.building_viewer.viewer_3d_widget import PyVistaViewerWidget
 from services.generator_3d_pyvista import BuildingGenerator3D
 from domain.building_generator_2d import BuildingGenerator2D
-from domain.building_spec import BuildingSpec, FacadeSpec, BuildingDirector, MODULE_WIDTH, MODULE_HEIGHT
+from domain.building_spec import BuildingSpec, FacadeSpec, BuildingDirector, PROCEDURAL_MODULE_WIDTH, PROCEDURAL_MODULE_HEIGHT
 from services.resources_loader import IconFiles
 
 
@@ -64,8 +64,8 @@ class BuildingViewerApp(QWidget):
         spec = BuildingSpec(
             num_floors=2,
             facades={
-                "front": FacadeSpec(width=8 * MODULE_WIDTH, grammar="<Wall00>\n[Door00]<Window00>"),
-                "right": FacadeSpec(width=12 * MODULE_WIDTH, grammar="<Wall00>\n<Window00>"),
+                "front": FacadeSpec(width=8 * PROCEDURAL_MODULE_WIDTH, grammar="<Wall00>\n[Door00]<Window00>"),
+                "right": FacadeSpec(width=12 * PROCEDURAL_MODULE_WIDTH, grammar="<Wall00>\n<Window00>"),
             },
         )
         self.display_building_kit_of_parts(spec)
@@ -76,8 +76,8 @@ class BuildingViewerApp(QWidget):
         spec = BuildingSpec(
             num_floors=random.randint(2, 12),
             facades={
-                "front": FacadeSpec(width=front_modules * MODULE_WIDTH, grammar="<Wall00>\n[Door00]<Window00>"),
-                "right": FacadeSpec(width=right_modules * MODULE_WIDTH, grammar="<Wall00>\n<Window00>"),
+                "front": FacadeSpec(width=front_modules * PROCEDURAL_MODULE_WIDTH, grammar="<Wall00>\n[Door00]<Window00>"),
+                "right": FacadeSpec(width=right_modules * PROCEDURAL_MODULE_WIDTH, grammar="<Wall00>\n<Window00>"),
             },
         )
         self.display_building_billboard(spec)
@@ -92,9 +92,9 @@ class BuildingViewerApp(QWidget):
         back_bp  = blueprint.get("back", {})
         left_bp  = blueprint.get("left", {})
 
-        front_width_px = max((len(m) for m in front_bp.values()), default=0) * MODULE_WIDTH
-        right_width_px = max((len(m) for m in right_bp.values()), default=0) * MODULE_WIDTH
-        building_height_px = num_floors * MODULE_HEIGHT
+        front_width_px = max((len(m) for m in front_bp.values()), default=0) * PROCEDURAL_MODULE_WIDTH
+        right_width_px = max((len(m) for m in right_bp.values()), default=0) * PROCEDURAL_MODULE_WIDTH
+        building_height_px = num_floors * PROCEDURAL_MODULE_HEIGHT
 
         # Centering: put building footprint center at origin
         center = (-front_width_px / 2, -right_width_px / 2, 0)
@@ -152,9 +152,9 @@ class BuildingViewerApp(QWidget):
         back_bp  = blueprint.get("back", {})
         left_bp  = blueprint.get("left", {})
 
-        front_width_px = max((len(m) for m in front_bp.values()), default=0) * MODULE_WIDTH
-        right_width_px = max((len(m) for m in right_bp.values()), default=0) * MODULE_WIDTH
-        building_height_px = num_floors * MODULE_HEIGHT
+        front_width_px = max((len(m) for m in front_bp.values()), default=0) * PROCEDURAL_MODULE_WIDTH
+        right_width_px = max((len(m) for m in right_bp.values()), default=0) * PROCEDURAL_MODULE_WIDTH
+        building_height_px = num_floors * PROCEDURAL_MODULE_HEIGHT
 
         # Billboard centering differs (because we rotate Y walls outward):
         center = (-front_width_px / 2, right_width_px / 2, 0)
