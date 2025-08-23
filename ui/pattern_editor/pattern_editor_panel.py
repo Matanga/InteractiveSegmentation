@@ -117,9 +117,16 @@ class PatternEditorPanel(QWidget):
 
         # --- Signal Connections ---
         self.pattern_area.patternChanged.connect(self.patternChanged)
+
+        self.pattern_area.patternChanged.connect(self._on_design_changed)
+        self.assembly_panel.assemblyChanged.connect(self._on_design_changed)
+
         self.convert_button.clicked.connect(self._on_convert_clicked)
         self._library.categoryChanged.connect(self.pattern_area.redraw)
         self.pattern_area.columnWidthsChanged.connect(self.column_header.update_column_widths)
+
+
+
 
         # --- Load a default pattern on startup ---
         self._load_default_pattern()
@@ -188,6 +195,43 @@ class PatternEditorPanel(QWidget):
         grp.addAction(self.act_sandbox)
         grp.setExclusive(True)
         return tb
+
+    def get_floor_definitions_json(self) -> str:
+        """
+        Public method to retrieve the complete JSON string of all floor
+        definitions from the pattern area.
+        This can be used for features like exporting to a file.
+        """
+        return self.pattern_area.get_data_as_json()
+
+    @Slot()
+    def _on_design_changed(self):
+        """
+        This slot is connected to any change in the pattern area OR the
+        assembly panel. It gathers all data needed for a 3D build and,
+        for now, simply prints it for debugging.
+        """
+        print("=" * 20 + " DESIGN CHANGED " + "=" * 20)
+
+        # 1. Get the floor definitions JSON
+        floor_definitions = self.get_floor_definitions_json()
+        print("\n--- Floor Definitions (from PatternArea) ---")
+        print(floor_definitions)
+
+        # 2. Get the assembly instructions
+        print("\n--- Assembly Instructions (from AssemblyPanel) ---")
+        assembly_data = {
+            "Width (X)": self.assembly_panel.width_edit.text(),
+            "Depth (Y)": self.assembly_panel.depth_edit.text(),
+            "Height (Z)": self.assembly_panel.height_edit.text(),
+            "Stacking Pattern": self.assembly_panel.pattern_edit.text(),
+        }
+        # Using pprint for a cleaner dictionary print
+        from pprint import pprint
+        pprint(assembly_data)
+
+        print("=" * 58 + "\n")
+
 
     @Slot(str)
     def set_editor_mode(self, mode: str):

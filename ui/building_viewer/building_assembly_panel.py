@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QCheckBox,
 )
 from PySide6.QtGui import QIntValidator
+from PySide6.QtCore import Signal
 
 class BuildingAssemblyPanel(QWidget):
     """
@@ -17,6 +18,8 @@ class BuildingAssemblyPanel(QWidget):
     defined floor patterns. This includes setting dimensions, the stacking
     pattern, and triggering the generation.
     """
+    assemblyChanged = Signal()
+
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setObjectName("BuildingAssemblyPanel")
@@ -78,6 +81,12 @@ class BuildingAssemblyPanel(QWidget):
         root_layout.addWidget(pattern_box)
         root_layout.addLayout(actions_layout)
         root_layout.addStretch(1) # Push everything to the top
+
+        #  Add SIGNAL CONNECTIONS
+        self.width_edit.textChanged.connect(self.assemblyChanged.emit)
+        self.depth_edit.textChanged.connect(self.assemblyChanged.emit)
+        self.height_edit.textChanged.connect(self.assemblyChanged.emit)
+        self.pattern_edit.textChanged.connect(self.assemblyChanged.emit)
 
         # --- Styling ---
         self.setStyleSheet("""
