@@ -4,7 +4,7 @@ resources_loader.py – ultra-light PNG catalogue for IBG-PE
 
 Purpose
 -------
-Keep a central list of all *.png icons shipped in the ./resources folder
+Keep a central list of all *.png icons shipped in the ./user_assets folder
 with zero GUI / Qt dependencies.  The ModuleLibrary widget is free to
 load QPixmaps (or anything else) based on these file paths.
 
@@ -28,10 +28,10 @@ class IconFiles:
     """
     A static catalogue of categorized PNG icon files.
 
-    Scans for subdirectories within the main 'resources' folder, treating
+    Scans for subdirectories within the main 'user_assets' folder, treating
     each subdirectory as a distinct category or set of icons.
     """
-    folder: Path = Path(__file__).parent.parent / "resources"
+    folder: Path = Path(__file__).parent.parent / "user_assets/icon_sets"
 
     # The main data structure: Dict[category_name, IconSet]
     # Example: {"default_set": {"window00": Path(...), ...}, "modern_set": {...}}
@@ -40,14 +40,14 @@ class IconFiles:
     @classmethod
     def _scan(cls) -> None:
         """
-        Scans for subdirectories in the 'resources' folder and populates the
+        Scans for subdirectories in the 'user_assets' folder and populates the
         `categories` dictionary.
         """
         if not cls.folder.is_dir():
             raise FileNotFoundError(f"Resources folder not found: {cls.folder}")
 
         cls.categories = {}
-        # Iterate through each item in the resources folder
+        # Iterate through each item in the user_assets folder
         for category_path in cls.folder.iterdir():
             if category_path.is_dir():
                 category_name = category_path.name
@@ -75,7 +75,7 @@ class IconFiles:
 
     @classmethod
     def reload(cls) -> None:
-        """Forces a re-scan of the entire resources directory structure."""
+        """Forces a re-scan of the entire user_assets directory structure."""
         cls._scan()
 
     @classmethod
@@ -90,6 +90,18 @@ class IconFiles:
         if not icons:
             raise FileNotFoundError(f"No icons found for category '{category_name}' in {cls.folder}")
         return icons
+
+    @classmethod
+    def get_all_module_names(cls) -> set[str]:
+        """Returns a set of all unique module names across all categories."""
+        cls.reload()
+        all_names = set()
+        # --- THIS IS THE FIX ---
+        # Use the correct, lowercase attribute name 'categories'
+        for category in cls.categories.values():
+            # --- END OF FIX ---
+            all_names.update(category.keys())
+        return all_names
 
 # Initialize the catalogue on module import.
 IconFiles._scan()

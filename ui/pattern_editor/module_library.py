@@ -140,7 +140,7 @@ class ModuleLibrary(QWidget):
         Slot for the 'Add Icon' button.
 
         This method should handle the logic for adding a new icon file to the
-        project's resources (e.g., by opening a file dialog) and then
+        project's user_assets (e.g., by opening a file dialog) and then
         trigger a palette rebuild.
         """
         # --- (The logic for adding a new icon file is handled here) ---
@@ -153,7 +153,7 @@ class ModuleLibrary(QWidget):
         """
         Refreshes the entire icon palette from the source files.
 
-        This is called after a new icon has been added to the resources. It
+        This is called after a new icon has been added to the user_assets. It
         re-scans the icons, rebuilds the internal widget list, and triggers
         a re-layout of the grid.
         """

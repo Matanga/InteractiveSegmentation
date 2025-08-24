@@ -170,7 +170,7 @@ if __name__ == "__main__":
     # --- Application Entry Point ---
     # Check for assets first
     if not IconFiles.get_icons_for_category("Default"):
-        print("FATAL: Could not find 'Default' icon category in './resources/Default'.")
+        print("FATAL: Could not find 'Default' icon category in './user_assets/Default'.")
         sys.exit(1)
 
     app = QApplication(sys.argv)

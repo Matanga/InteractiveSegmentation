@@ -406,7 +406,7 @@ def run_test(test_function):
 #     print("\n   --- Testing Integration: IconFiles -> BuildingGenerator ---")
 #
 #     # --- 1. Use IconFiles to find the modules ---
-#     # This assumes you have a "Default" sub-directory in your "resources" folder
+#     # This assumes you have a "Default" sub-directory in your "user_assets" folder
 #     category_to_use = "Default"
 #     print(f"   Loading icon set for category: '{category_to_use}'")
 #

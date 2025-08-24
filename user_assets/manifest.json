@@ -1,0 +1,11 @@
+{
+    "data_tables": [
+        {
+            "id": "jack",
+            "display_name": "Jack",
+            "source_path": "C:\\Users\\matan\\Documents\\Atlas\\SE\\Samples\\DataTables\\DT_JackBuildingModules.json",
+            "internal_path": "user_assets\\module_dbs\\jack.json",
+            "mapping_file": "user_assets\\mappings\\jack_mapping.json"
+        }
+    ]
+}

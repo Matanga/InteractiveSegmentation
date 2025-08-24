@@ -1,0 +1,1406 @@
+[
+	{
+		"Name": "Num_116",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_01",
+				"AssetName": "Roof_01"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "Roof_01",
+		"Variation": 1,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_117",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_02",
+				"AssetName": "Roof_02"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "Roof_02",
+		"Variation": 1,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_118",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_03",
+				"AssetName": "Roof_03"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "Roof_03",
+		"Variation": 1,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_119",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_04",
+				"AssetName": "Roof_04"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "Roof_04",
+		"Variation": 1,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_120",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_05",
+				"AssetName": "Roof_05"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "Roof_05",
+		"Variation": 1,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_121",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_06",
+				"AssetName": "Roof_06"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "Roof_06",
+		"Variation": 1,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_122",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_07",
+				"AssetName": "Roof_07"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "Roof_07",
+		"Variation": 1,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_123",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_08",
+				"AssetName": "Roof_08"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "Roof_08",
+		"Variation": 1,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_124",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_09",
+				"AssetName": "Roof_09"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "Roof_09",
+		"Variation": 1,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_125",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_010",
+				"AssetName": "Roof_010"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "Roof_10",
+		"Variation": 1,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_126",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_011",
+				"AssetName": "Roof_011"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "Roof_11",
+		"Variation": 1,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_127",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_012",
+				"AssetName": "Roof_012"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "Roof_12",
+		"Variation": 1,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_128",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_013",
+				"AssetName": "Roof_013"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "Roof_13",
+		"Variation": 1,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_129",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_014",
+				"AssetName": "Roof_014"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "Roof_14",
+		"Variation": 1,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_130",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_015",
+				"AssetName": "Roof_015"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "Roof_15",
+		"Variation": 1,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_131",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_016",
+				"AssetName": "Roof_016"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "Roof_16",
+		"Variation": 1,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_132",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_Base_01",
+				"AssetName": "Roof_Base_01"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "Roof_Base_01",
+		"Variation": 1,
+		"Size": 100,
+		"Height": 200,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_133",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_Base_02",
+				"AssetName": "Roof_Base_02"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "Roof_Base_02",
+		"Variation": 1,
+		"Size": 100,
+		"Height": 200,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_134",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_Base_03",
+				"AssetName": "Roof_Base_03"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "Roof_Base_03",
+		"Variation": 1,
+		"Size": 100,
+		"Height": 200,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_135",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_Base_04",
+				"AssetName": "Roof_Base_04"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "Roof_Base_04",
+		"Variation": 1,
+		"Size": 100,
+		"Height": 200,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_136",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_Base_05",
+				"AssetName": "Roof_Base_05"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "Roof_Base_05",
+		"Variation": 1,
+		"Size": 100,
+		"Height": 200,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_137",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_Base_06",
+				"AssetName": "Roof_Base_06"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "Roof_Base_06",
+		"Variation": 1,
+		"Size": 100,
+		"Height": 200,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_138",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_Base_07",
+				"AssetName": "Roof_Base_07"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "Roof_Base_07",
+		"Variation": 1,
+		"Size": 100,
+		"Height": 200,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_139",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_Base_08",
+				"AssetName": "Roof_Base_08"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "Roof_Base_08",
+		"Variation": 1,
+		"Size": 100,
+		"Height": 200,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_140",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_Base_End_01",
+				"AssetName": "Roof_Base_End_01"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "Roof_Base_End_01",
+		"Variation": 1,
+		"Size": 200,
+		"Height": 200,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_141",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_Base_Start_01",
+				"AssetName": "Roof_Base_Start_01"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "Roof_Base_Start_01",
+		"Variation": 1,
+		"Size": 200,
+		"Height": 200,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_142",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_End_01",
+				"AssetName": "Roof_End_01"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "Roof_End_01",
+		"Variation": 1,
+		"Size": 200,
+		"Height": 0,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_143",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_End_02",
+				"AssetName": "Roof_End_02"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "Roof_End_02",
+		"Variation": 1,
+		"Size": 200,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_144",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_End_03",
+				"AssetName": "Roof_End_03"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "Roof_End_03",
+		"Variation": 1,
+		"Size": 200,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_145",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_End_04",
+				"AssetName": "Roof_End_04"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "Roof_End_04",
+		"Variation": 1,
+		"Size": 200,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_146",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_Start_01",
+				"AssetName": "Roof_Start_01"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "Roof_Start_01",
+		"Variation": 1,
+		"Size": 200,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_147",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_Start_02",
+				"AssetName": "Roof_Start_02"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "Roof_Start_02",
+		"Variation": 1,
+		"Size": 200,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_148",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_Start_03",
+				"AssetName": "Roof_Start_03"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "Roof_Start_03",
+		"Variation": 1,
+		"Size": 200,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_149",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_Start_04",
+				"AssetName": "Roof_Start_04"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "Roof_Start_04",
+		"Variation": 1,
+		"Size": 200,
+		"Height": 0,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_150",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_Start_04",
+				"AssetName": "Roof_Start_04"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_Rs",
+		"Variation": 1,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_151",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_Start_03",
+				"AssetName": "Roof_Start_03"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_Rs",
+		"Variation": 2,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_152",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_Start_02",
+				"AssetName": "Roof_Start_02"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_Rs",
+		"Variation": 3,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_153",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_Start_01",
+				"AssetName": "Roof_Start_01"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_Rs",
+		"Variation": 4,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_154",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_End_04",
+				"AssetName": "Roof_End_04"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_Re",
+		"Variation": 1,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_155",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_End_03",
+				"AssetName": "Roof_End_03"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_Re",
+		"Variation": 2,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_156",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_End_02",
+				"AssetName": "Roof_End_02"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_Re",
+		"Variation": 3,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_157",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_End_01",
+				"AssetName": "Roof_End_01"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_Re",
+		"Variation": 4,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_158",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_Base_Start_01",
+				"AssetName": "Roof_Base_Start_01"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_Rbs",
+		"Variation": 1,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_159",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_Base_End_01",
+				"AssetName": "Roof_Base_End_01"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_Rbe",
+		"Variation": 1,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_160",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_Base_08",
+				"AssetName": "Roof_Base_08"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_Rb",
+		"Variation": 1,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_161",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_Base_07",
+				"AssetName": "Roof_Base_07"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_Rb",
+		"Variation": 2,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_162",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_Base_06",
+				"AssetName": "Roof_Base_06"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_Rb",
+		"Variation": 3,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_163",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_Base_05",
+				"AssetName": "Roof_Base_05"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_Rb",
+		"Variation": 4,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_164",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_Base_04",
+				"AssetName": "Roof_Base_04"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_Rb",
+		"Variation": 5,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_165",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_Base_03",
+				"AssetName": "Roof_Base_03"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_Rb",
+		"Variation": 6,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_166",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_Base_02",
+				"AssetName": "Roof_Base_02"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_Rb",
+		"Variation": 7,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_167",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_Base_01",
+				"AssetName": "Roof_Base_01"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_Rb",
+		"Variation": 8,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_168",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_016",
+				"AssetName": "Roof_016"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_R",
+		"Variation": 1,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_169",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_015",
+				"AssetName": "Roof_015"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_R",
+		"Variation": 2,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_170",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_014",
+				"AssetName": "Roof_014"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_R",
+		"Variation": 3,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_171",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_013",
+				"AssetName": "Roof_013"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_R",
+		"Variation": 4,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_172",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_012",
+				"AssetName": "Roof_012"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_R",
+		"Variation": 5,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_173",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_011",
+				"AssetName": "Roof_011"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_R",
+		"Variation": 6,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_174",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_010",
+				"AssetName": "Roof_010"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_R",
+		"Variation": 7,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_175",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_09",
+				"AssetName": "Roof_09"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_R",
+		"Variation": 8,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_176",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_08",
+				"AssetName": "Roof_08"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_R",
+		"Variation": 9,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_177",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_07",
+				"AssetName": "Roof_07"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_R",
+		"Variation": 10,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_178",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_06",
+				"AssetName": "Roof_06"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_R",
+		"Variation": 11,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_179",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_05",
+				"AssetName": "Roof_05"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_R",
+		"Variation": 12,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_180",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_04",
+				"AssetName": "Roof_04"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_R",
+		"Variation": 13,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_181",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_03",
+				"AssetName": "Roof_03"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_R",
+		"Variation": 14,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_182",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_02",
+				"AssetName": "Roof_02"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_R",
+		"Variation": 15,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_183",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_01",
+				"AssetName": "Roof_01"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_R",
+		"Variation": 16,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_184",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_Beam_Start_01",
+				"AssetName": "Roof_Beam_Start_01"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_Rts",
+		"Variation": 1,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_185",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_Beam_01",
+				"AssetName": "Roof_Beam_01"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_Rt",
+		"Variation": 1,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_186",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_Gablewall_Right_01",
+				"AssetName": "Roof_Gablewall_Right_01"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_Gw_R",
+		"Variation": 1,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_187",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Roofs/Roof_Gablewall_Left_01",
+				"AssetName": "Roof_Gablewall_Left_01"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_Gw_L",
+		"Variation": 1,
+		"Size": 100,
+		"Height": 100,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_188",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Walls/House_017/House_017_Door_03",
+				"AssetName": "House_017_Door_03"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_17Door",
+		"Variation": 3,
+		"Size": 200,
+		"Height": 400,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_189",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Walls/House_017/House_017_Wall_01",
+				"AssetName": "House_017_Wall_01"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_17Wall",
+		"Variation": 1,
+		"Size": 200,
+		"Height": 400,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_190",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Walls/House_017/House_017_Wall_02",
+				"AssetName": "House_017_Wall_02"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_17Wall",
+		"Variation": 2,
+		"Size": 200,
+		"Height": 400,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_191",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Walls/House_017/House_017_Wall_03",
+				"AssetName": "House_017_Wall_03"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_17Wall",
+		"Variation": 3,
+		"Size": 200,
+		"Height": 400,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_192",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Walls/House_017/House_017_Wall_04",
+				"AssetName": "House_017_Wall_04"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_17Wall",
+		"Variation": 4,
+		"Size": 200,
+		"Height": 400,
+		"RandomWeight": 1
+	},
+	{
+		"Name": "Num_193",
+		"AssetPath":
+		{
+			"AssetPath":
+			{
+				"PackageName": "/Game/Procedural/Jack_buildings/Modular_Corners/House_017/House_017_Corner_01",
+				"AssetName": "House_017_Corner_01"
+			},
+			"SubPathString": ""
+		},
+		"Level": 0,
+		"ModuleName": "J_17Corner",
+		"Variation": 1,
+		"Size": 100,
+		"Height": 400,
+		"RandomWeight": 1
+	}
+]

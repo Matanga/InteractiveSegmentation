@@ -26,6 +26,7 @@ from domain.grammar import parse_building_json
 import services.building_assembler as assembler
 from services.facade_image_renderer import FacadeImageRenderer
 from PySide6.QtWidgets import QFileDialog
+from ui.mapping_editor.mapping_editor_panel import MappingEditorPanel
 
 from services.ui_adapter import prepare_spec_from_ui
 
@@ -41,6 +42,8 @@ class PatternEditorPanel(QWidget):
         self.pattern_area = PatternArea(3)
         self._input_panel = PatternInputPanel()
         self._output_panel = PatternOutputPanel()
+        self._mapping_panel = MappingEditorPanel()
+
         self._conversion_thread: RepeatableExpressionWorker | None = None
 
         # --- UI Assembly ---
@@ -109,20 +112,31 @@ class PatternEditorPanel(QWidget):
         visual_splitter.addWidget(viewer_and_controls_widget)
         visual_splitter.setSizes([250, 1000, 500])
 
-        # Text I/O
-        text_splitter = QSplitter(Qt.Horizontal)
-        text_splitter.addWidget(self._input_panel)
-        text_splitter.addWidget(self._output_panel)
+        # Create a QGroupBox for your new Mapping Editor
+        mapping_box = QGroupBox("Mapping Editor")
+        mapping_layout = QVBoxLayout(mapping_box)
+        mapping_layout.addWidget(self._mapping_panel)
+
+        # The existing Text Pattern I/O panel
         text_io_box = QGroupBox("Text Pattern I/O")
         text_io_layout = QVBoxLayout(text_io_box)
-        text_io_layout.addWidget(text_splitter)
+        # We can put both old text panels in here for now
+        text_io_layout.addWidget(self._input_panel)
+        text_io_layout.addWidget(self._output_panel)
 
-        # Root
+        # A new splitter to hold both bottom panels side-by-side
+        bottom_splitter = QSplitter(Qt.Horizontal)
+        bottom_splitter.addWidget(mapping_box)
+        bottom_splitter.addWidget(text_io_box)
+
+        # The root splitter now contains the visual part and the bottom splitter
         main_splitter = QSplitter(Qt.Vertical)
         main_splitter.addWidget(visual_splitter)
-        main_splitter.addWidget(text_io_box)
+        main_splitter.addWidget(bottom_splitter)  # Add the new splitter here
         main_splitter.setStretchFactor(0, 4)
         main_splitter.setStretchFactor(1, 1)
+
+
 
         root_layout = QVBoxLayout(self)
         root_layout.addWidget(main_splitter)
