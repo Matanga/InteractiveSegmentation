@@ -83,10 +83,10 @@ class BuildingAssemblyPanel(QWidget):
         root_layout.addStretch(1) # Push everything to the top
 
         #  Add SIGNAL CONNECTIONS
-        self.width_edit.textChanged.connect(self.assemblyChanged)
-        self.depth_edit.textChanged.connect(self.assemblyChanged)
-        self.height_edit.textChanged.connect(self.assemblyChanged)
-        self.pattern_edit.textChanged.connect(self.assemblyChanged)
+        self.width_edit.editingFinished.connect(self.assemblyChanged)
+        self.depth_edit.editingFinished.connect(self.assemblyChanged)
+        self.height_edit.editingFinished.connect(self.assemblyChanged)
+        self.pattern_edit.editingFinished.connect(self.assemblyChanged)
 
         # --- Styling ---
         self.setStyleSheet("""

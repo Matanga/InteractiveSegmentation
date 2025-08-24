@@ -64,7 +64,7 @@ class PatternResolver:
 
         # Step 3: Flatten the slots into the final list
         final_module_list = [module for slot in resolved_slots for module in slot]
-        return final_module_list
+        return list(reversed(final_module_list))
 
 
     # --- THIS IS THE FIX ---
