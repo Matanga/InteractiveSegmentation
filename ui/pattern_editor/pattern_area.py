@@ -2,7 +2,7 @@ from __future__ import annotations
 import json
 
 from PySide6.QtCore import Qt, Signal, Slot, QTimer
-from PySide6.QtWidgets import QVBoxLayout, QWidget, QPushButton
+from PySide6.QtWidgets import QVBoxLayout, QWidget, QPushButton, QHBoxLayout
 
 from domain.grammar import REPEATABLE, RIGID
 from services.pattern_preprocessor import preprocess_unreal_json_data
@@ -25,13 +25,21 @@ class PatternArea(QWidget):
         self._rows_layout = QVBoxLayout()
         self._rows_layout.setSpacing(5)
         self._rows_layout.setAlignment(Qt.AlignTop)
-        self._root_layout.addLayout(self._rows_layout)
+        self._root_layout.addLayout(self._rows_layout, 1)  # Main content area stretches
 
+        # A single, simple horizontal layout for all bottom buttons.
+        self.bottom_bar_layout = QHBoxLayout()
         self.add_floor_button = QPushButton("➕ Add Floor")
+        # The export button will be created in the parent and added to this layout.
         self.add_floor_button.clicked.connect(self._add_row_at_top)
-        self.add_floor_button.setFixedWidth(200)
-        self._root_layout.addWidget(self.add_floor_button, 0, Qt.AlignHCenter)
-        self._root_layout.addStretch(1)
+
+        # Add a stretch to push all buttons to the right.
+        self.bottom_bar_layout.addStretch()
+        self.bottom_bar_layout.addWidget(self.add_floor_button)
+        # The parent panel will add the export button here.
+
+        # Add this button bar to the main vertical layout.
+        self._root_layout.addLayout(self.bottom_bar_layout)
 
         for _ in range(num_floors):
             self._add_row_at_top()
@@ -79,9 +87,43 @@ class PatternArea(QWidget):
 
     @Slot()
     def _add_row_at_top(self):
-        new_row = self._create_row(0) # Temp index
+        """
+        Adds a new, pre-populated floor to the top of the canvas.
+        """
+        # 1. Generate a unique default name for the new floor.
+        existing_names = {row.get_floor_data()["Name"] for row in self._floor_rows}
+        i = len(self._floor_rows) + 1
+        while True:
+            # We'll name it based on its creation order, e.g., "New Floor 4"
+            new_name = f"New Floor {i}"
+            if new_name not in existing_names:
+                break
+            i += 1
+
+        # 2. Create a default data structure for the new floor.
+        default_facade_pattern = "<Wall00>"
+        default_floor_data = {
+            "Name": new_name,
+            "Pattern": [
+                default_facade_pattern,  # Front
+                default_facade_pattern,  # Left
+                default_facade_pattern,  # Back
+                default_facade_pattern  # Right
+            ],
+            "Height": 400  # Default height
+        }
+
+        # 3. Create the new row widget.
+        new_row = self._create_row(0)  # The index is temporary and will be fixed
+
+        # 4. Immediately populate it with our default data.
+        new_row.set_floor_data(default_floor_data)
+
+        # Add the new row to the UI and internal list
         self._rows_layout.insertWidget(0, new_row)
         self._floor_rows.insert(0, new_row)
+
+        # Trigger a full update to re-index and adjust column widths
         self._re_index_floors()
 
     @Slot(FloorRowWidget)

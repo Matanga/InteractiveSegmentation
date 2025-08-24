@@ -3,7 +3,7 @@ import json
 
 from PySide6.QtCore import Qt, Slot, Signal
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QGroupBox, QToolBar, QScrollArea, QSplitter, QPushButton, QFrame, QMessageBox
+    QWidget, QVBoxLayout, QGroupBox, QToolBar, QScrollArea, QSplitter, QPushButton, QFrame, QMessageBox, QHBoxLayout
 )
 from PySide6.QtGui import QAction, QActionGroup
 
@@ -45,8 +45,6 @@ class PatternEditorPanel(QWidget):
         self._output_panel = PatternOutputPanel()
         self._mapping_panel = MappingEditorPanel()
 
-        self._conversion_thread: RepeatableExpressionWorker | None = None
-
         # --- UI Assembly ---
 
         # Library box
@@ -54,16 +52,13 @@ class PatternEditorPanel(QWidget):
         lib_layout = QVBoxLayout(library_box)
         lib_layout.addWidget(self._library)
 
-        # 3D viewer
+        # 3D viewer and Assembly Panel
         viewer_box = QGroupBox("3D Preview")
         viewer_layout = QVBoxLayout(viewer_box)
         self.building_viewer = BuildingViewerApp()
         viewer_layout.addWidget(self.building_viewer)
-        self.building_viewer.viewer.picked.connect(self._on_view_pick)
 
         self.assembly_panel = BuildingAssemblyPanel()
-
-        # --- NEW: Create a new container for the viewer and its controls ---
         viewer_and_controls_widget = QWidget()
         viewer_and_controls_layout = QVBoxLayout(viewer_and_controls_widget)
         viewer_and_controls_layout.setContentsMargins(0, 0, 0, 0)
@@ -75,9 +70,8 @@ class PatternEditorPanel(QWidget):
         canvas_layout = QVBoxLayout(canvas_box)
         canvas_layout.setContentsMargins(4, 4, 4, 4)
 
-        # The layout for the header and scroll area
         content_layout = QVBoxLayout()
-        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setContentsMargins(0, 5, 0, 0)
         content_layout.setSpacing(0)
 
         self.column_header = ColumnHeaderWidget()
@@ -89,65 +83,55 @@ class PatternEditorPanel(QWidget):
         content_layout.addWidget(self.column_header)
         content_layout.addWidget(pattern_scroll, 1)
 
-        # Add the content layout directly to the canvas box
+        # --- THIS IS THE FIX ---
+        # The bottom bar layout lives inside PatternArea.
+        # We create the export button and add it to that pre-existing layout.
+        self.export_button = QPushButton("Export Floor Data Table...")
+        # Add the export button directly after the Add Floor button.
+        self.pattern_area.bottom_bar_layout.addWidget(self.export_button)
+
+        # Assemble the main canvas_layout
         canvas_layout.addLayout(content_layout, 1)
-
-
+        # --- END OF FIX ---
 
         # --- Main Window Splitters ---
-
-        # Top split: library | canvas | viewer
         visual_splitter = QSplitter(Qt.Horizontal)
         visual_splitter.addWidget(library_box)
         visual_splitter.addWidget(canvas_box)
-        # visual_splitter.addWidget(viewer_box)
         visual_splitter.addWidget(viewer_and_controls_widget)
         visual_splitter.setSizes([250, 1000, 500])
 
-        # Create a QGroupBox for your new Mapping Editor
         mapping_box = QGroupBox("Mapping Editor")
         mapping_layout = QVBoxLayout(mapping_box)
         mapping_layout.addWidget(self._mapping_panel)
 
-        # The existing Text Pattern I/O panel
         text_io_box = QGroupBox("Text Pattern I/O")
         text_io_layout = QVBoxLayout(text_io_box)
-        # We can put both old text panels in here for now
         text_io_layout.addWidget(self._input_panel)
         text_io_layout.addWidget(self._output_panel)
 
-        # A new splitter to hold both bottom panels side-by-side
         bottom_splitter = QSplitter(Qt.Horizontal)
         bottom_splitter.addWidget(mapping_box)
         bottom_splitter.addWidget(text_io_box)
 
-        # The root splitter now contains the visual part and the bottom splitter
         main_splitter = QSplitter(Qt.Vertical)
         main_splitter.addWidget(visual_splitter)
-        main_splitter.addWidget(bottom_splitter)  # Add the new splitter here
+        main_splitter.addWidget(bottom_splitter)
         main_splitter.setStretchFactor(0, 4)
         main_splitter.setStretchFactor(1, 1)
-
-
 
         root_layout = QVBoxLayout(self)
         root_layout.addWidget(main_splitter)
 
         # --- Signal Connections ---
         self.pattern_area.patternChanged.connect(self.patternChanged)
-
         self.pattern_area.patternChanged.connect(self._on_design_changed)
         self.assembly_panel.assemblyChanged.connect(self._on_design_changed)
-
         self._library.categoryChanged.connect(self.pattern_area.redraw)
         self.pattern_area.columnWidthsChanged.connect(self.column_header.update_column_widths)
-
-        self.assembly_panel.export_button.clicked.connect(self._on_export_button_clicked)
-
         self.assembly_panel.generate_button.clicked.connect(self._on_generate_button_clicked)
+        self.export_button.clicked.connect(self._on_export_button_clicked)
 
-        # --- Load a default pattern on startup ---
-        # --- Load a default pattern on startup ---
         # --- Load a default pattern on startup ---
         self._load_default_pattern()
 
