@@ -21,7 +21,8 @@ from ui.building_viewer.building_viewer import BuildingViewerApp
 # conversion feature, which is separate from our current refactor. We'll leave
 # it imported but be aware its functionality might need updating later if used.
 from services.facade_segmentation import RepeatableExpressionWorker
-
+from services.stacking_resolver import StackingResolver
+from domain.grammar import parse_building_json
 import services.building_assembler as assembler
 from services.facade_image_renderer import FacadeImageRenderer
 from PySide6.QtWidgets import QFileDialog
@@ -136,9 +137,10 @@ class PatternEditorPanel(QWidget):
         self._library.categoryChanged.connect(self.pattern_area.redraw)
         self.pattern_area.columnWidthsChanged.connect(self.column_header.update_column_widths)
 
+        self.assembly_panel.generate_button.clicked.connect(self._on_generate_button_clicked)
 
-
-
+        # --- Load a default pattern on startup ---
+        # --- Load a default pattern on startup ---
         # --- Load a default pattern on startup ---
         self._load_default_pattern()
 
@@ -210,14 +212,18 @@ class PatternEditorPanel(QWidget):
         # btn_test_render.triggered.connect(self._on_test_render_facade_strip)
         # tb.addAction(btn_test_render)
 
-        tb.addSeparator()
-        btn_export_strips = QAction("TEST: Export All Strips", self)
-        btn_export_strips.triggered.connect(self._on_test_export_all_strips)
-        tb.addAction(btn_export_strips)
+        # tb.addSeparator()
+        # btn_export_strips = QAction("TEST: Export All Strips", self)
+        # btn_export_strips.triggered.connect(self._on_test_export_all_strips)
+        # tb.addAction(btn_export_strips)
 
         btn_test_3d = QAction("TEST: Render Ground Floor 3D", self)
         btn_test_3d.triggered.connect(self._on_test_render_ground_floor_3d)
         tb.addAction(btn_test_3d)
+
+        btn_test_stack = QAction("TEST: Resolve Stack", self)
+        btn_test_stack.triggered.connect(self._on_test_resolve_stack)
+        tb.addAction(btn_test_stack)
 
         grp = QActionGroup(self)
         grp.addAction(self.act_structured)
@@ -232,6 +238,44 @@ class PatternEditorPanel(QWidget):
         This can be used for features like exporting to a file.
         """
         return self.pattern_area.get_data_as_json()
+
+    @Slot()
+    def _on_test_resolve_stack(self):
+        """
+        A test function that resolves the vertical stacking pattern and
+        prints the resulting order of floors.
+        """
+        print("\n" + "=" * 20 + " Vertical Stack Resolution Test " + "=" * 20)
+
+        try:
+            # 1. Gather all the current UI data
+            floor_defs_json = self.get_floor_definitions_json()
+            stack_pattern = self.assembly_panel.pattern_edit.text()
+            b_height = int(self.assembly_panel.height_edit.text())
+
+            # 2. We need the floor_map (Name -> Floor Object) for the resolver
+            floor_data = json.loads(floor_defs_json)
+            pattern_obj = parse_building_json(floor_data)
+            floor_map = {floor.name: floor for floor in pattern_obj.floors}
+
+            print(f"  - Using Stacking Pattern: '{stack_pattern}'")
+            print(f"  - With Total Building Height: {b_height}cm")
+            print(f"  - Available Floors: {list(floor_map.keys())}")
+
+            # 3. Initialize and run the StackingResolver
+            resolver = StackingResolver(floor_map)
+            ordered_floors = resolver.resolve(stack_pattern, b_height)
+
+            # 4. Print the result
+            print("\n--- RESOLVED FLOOR ORDER (Bottom to Top) ---")
+            for i, name in enumerate(ordered_floors):
+                print(f"  {i}: {name} (Height: {floor_map[name].height}cm)")
+            print("-" * 50)
+
+        except Exception as e:
+            print(f"Stack Resolution Test FAILED: {e}")
+            import traceback
+            traceback.print_exc()
 
     @Slot()
     def _on_test_render_ground_floor_3d(self):
@@ -371,6 +415,35 @@ class PatternEditorPanel(QWidget):
     @Slot()
     def _on_design_changed(self):
         """
+        This slot is connected to any change in the design. It gathers all
+        data and, if live update is on, triggers the 3D viewer.
+        """
+        # We only run the update if the checkbox is checked.
+        if not self.assembly_panel.live_update_checkbox.isChecked():
+            return
+
+        try:
+            floor_defs_json = self.get_floor_definitions_json()
+            b_width = int(self.assembly_panel.width_edit.text() or 0)
+            b_depth = int(self.assembly_panel.depth_edit.text() or 0)
+            b_height = int(self.assembly_panel.height_edit.text() or 0)
+            stack_pattern = self.assembly_panel.pattern_edit.text()
+
+            if b_width > 0 and b_depth > 0 and b_height > 0:
+                # Call the new master function on the viewer
+                self.building_viewer.display_full_building(
+                    floor_defs_json, b_width, b_depth, b_height, stack_pattern
+                )
+        except (ValueError, KeyError) as e:
+            # A ValueError can happen if text fields are empty/invalid.
+            # A KeyError can happen if the floor_map is temporarily out of sync.
+            # We can silently ignore these during live-editing.
+            # print(f"Info: Live update skipped due to transient error: {e}")
+            pass
+
+    @Slot()
+    def _on_design_changedOLD(self):
+        """
         This slot is connected to any change in the pattern area OR the
         assembly panel. It gathers all data needed for a 3D build and,
         for now, simply prints it for debugging.
@@ -439,3 +512,27 @@ class PatternEditorPanel(QWidget):
             self.pattern_area.load_from_json(pattern_json_str)
         except Exception as e:
             print(f"Error loading pattern in PatternEditorPanel: {e}")
+
+    @Slot()
+    def _on_generate_button_clicked(self):
+        """
+        A dedicated slot for the manual generate button. It's the same
+        logic as the live update, but without the checkbox check.
+        """
+        try:
+            floor_defs_json = self.get_floor_definitions_json()
+            b_width = int(self.assembly_panel.width_edit.text() or 0)
+            b_depth = int(self.assembly_panel.depth_edit.text() or 0)
+            b_height = int(self.assembly_panel.height_edit.text() or 0)
+            stack_pattern = self.assembly_panel.pattern_edit.text()
+
+            if b_width > 0 and b_depth > 0 and b_height > 0:
+                self.building_viewer.display_full_building(
+                    floor_defs_json, b_width, b_depth, b_height, stack_pattern
+                )
+        except Exception as e:
+            # For a manual click, we should be more verbose with errors.
+            print(f"ERROR on manual generation: {e}")
+            import traceback
+            traceback.print_exc()
+

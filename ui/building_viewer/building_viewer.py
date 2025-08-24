@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import random
 from typing import Dict, List
-
+import json
 from PySide6.QtWidgets import QWidget, QVBoxLayout
 
 from ui.building_viewer.viewer_3d_widget import PyVistaViewerWidget
@@ -11,7 +11,9 @@ from services.generator_3d_pyvista import BuildingGenerator3D
 from domain.building_generator_2d import BuildingGenerator2D
 from domain.building_spec import BuildingSpec, FacadeSpec, BuildingDirector, PROCEDURAL_MODULE_WIDTH, PROCEDURAL_MODULE_HEIGHT
 from services.resources_loader import IconFiles
-
+from services.stacking_resolver import StackingResolver
+from domain.grammar import parse_building_json
+from services.building_image_exporter import generate_all_facade_strip_images
 from PIL import Image
 Blueprint = Dict[str, Dict[int, List[str]]]  # side -> floor_idx -> [module_names]
 
@@ -292,3 +294,107 @@ class BuildingViewerApp(QWidget):
             actor_name = f"{floor_name}_{side_name}"
             self.viewer.add_managed_actor(actor_name, mesh, tex)
             print(f"  - SUCCESS: Added actor '{actor_name}' to the viewer.")
+
+    def display_full_building(
+            self,
+            floor_definitions_json: str,
+            building_width: int,
+            building_depth: int,
+            total_building_height: int,
+            stacking_pattern: str
+    ):
+        """
+        The main entry point for rendering a complete building.
+        """
+        print("\n" + "=" * 20 + " Assembling Full Building " + "=" * 20)
+
+        # --- FIX #1: Suppress Rendering ---
+        self.viewer.suppress_rendering = True
+        try:
+            # --- Step 1: Resolve the Vertical Stacking Order ---
+            floor_data = json.loads(floor_definitions_json)
+            pattern_obj = parse_building_json(floor_data)
+            floor_map = {floor.name: floor for floor in pattern_obj.floors}
+
+            resolver = StackingResolver(floor_map)
+            ordered_floor_names = resolver.resolve(stacking_pattern, total_building_height)
+            print(f"  - Resolved floor order: {ordered_floor_names}")
+
+            # --- Step 2: Generate ALL necessary facade strip images ---
+            all_strip_images = generate_all_facade_strip_images(
+                floor_definitions_json, building_width, building_depth
+            )
+            print(f"  - Generated {len(all_strip_images)} unique facade strip images.")
+
+            # --- Step 3: Clear the old scene and place new floors ---
+            self.viewer.clear_scene()
+            current_elevation = 0
+
+            for floor_name in ordered_floor_names:
+                floor_def = floor_map.get(floor_name)
+                if not floor_def: continue
+
+                print(f"  - Placing floor '{floor_name}' at elevation {current_elevation}cm...")
+
+                # --- FIX #3: Corrected Centering and Placement Logic ---
+                half_width = building_width / 2
+                half_depth = building_depth / 2
+
+                facade_definitions = {
+                    "front": {"rot": 180, "pos": (0, half_depth, 0), "size": building_width},
+                    "back": {"rot": 0, "pos": (0, -half_depth, 0), "size": building_width},
+                    "left": {"rot": 90, "pos": (half_width, 0, 0), "size": building_depth},
+                    "right": {"rot": -90, "pos": (-half_width, 0, 0), "size": building_depth},
+                }
+                # facade_definitions = {
+                #     "front": {"rot": 180, "pos": (0, half_depth, elevation), "size": building_width},
+                #     "back": {"rot": 0, "pos": (0, -half_depth, elevation), "size": building_width},
+                #     "left": {"rot": 90, "pos": (half_width, 0, elevation), "size": building_depth},
+                #     "right": {"rot": -90, "pos": (-half_width, 0, elevation), "size": building_depth},
+                # }
+
+
+
+
+                for side_name, side_data in facade_definitions.items():
+                    image_key = f"{floor_name}-{side_name}"
+                    strip_image = all_strip_images.get(image_key)
+                    if not strip_image: continue
+
+                    mesh, tex = self.generator_3d.create_procedural_billboard(
+                        facade_image=strip_image,
+                        procedural_width=side_data["size"],
+                        procedural_height=floor_def.height
+                    )
+
+                    # --- FIX #2: Create a Deep Copy for each instance ---
+                    mesh_instance = mesh.copy()
+
+                    # Apply rotation and final position
+                    mesh_instance.rotate_z(side_data["rot"], inplace=True)
+                    # The mesh pivot is now at its bottom-center, so we just add the elevation
+                    final_pos = (side_data["pos"][0], side_data["pos"][1], current_elevation)
+                    mesh_instance.translate(final_pos, inplace=True)
+
+                    actor_name = f"{floor_name}_{side_name}_{current_elevation}"
+                    self.viewer.add_managed_actor(actor_name, mesh_instance, tex)
+
+                current_elevation += floor_def.height
+
+            # --- Step 4: Add the Roof (with corrected centering) ---
+            print(f"  - Placing roof at elevation {current_elevation}cm...")
+            roof_mesh, roof_tex = self.generator_3d.create_roof(building_width, building_depth)
+            roof_mesh.translate((0, 0, current_elevation), inplace=True)  # Center is already (0,0)
+            self.viewer.add_managed_actor("roof", roof_mesh, roof_tex)
+
+        except Exception as e:
+            print(f"ERROR during full building assembly: {e}")
+            import traceback
+            traceback.print_exc()
+
+        finally:
+            # --- FIX #1: Re-enable Rendering ---
+            self.viewer.suppress_rendering = False
+
+        self.viewer.reset_camera()
+        print("--- Full Building Assembly Complete ---")
