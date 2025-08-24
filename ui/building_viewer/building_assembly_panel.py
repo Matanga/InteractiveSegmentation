@@ -46,6 +46,7 @@ class BuildingAssemblyPanel(QWidget):
         # Action Buttons
         self.generate_button = QPushButton("Generate Building")
         self.generate_button.setObjectName("GenerateButton") # For styling
+        self.export_button = QPushButton("Export Floor Data Table...")
         self.live_update_checkbox = QCheckBox("Live Update")
 
         # --- Layouts ---
@@ -74,6 +75,7 @@ class BuildingAssemblyPanel(QWidget):
         actions_layout = QHBoxLayout()
         actions_layout.addWidget(self.live_update_checkbox)
         actions_layout.addStretch()
+        actions_layout.addWidget(self.export_button)
         actions_layout.addWidget(self.generate_button)
 
         # Assemble the root layout

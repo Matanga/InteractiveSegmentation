@@ -85,13 +85,33 @@ class DataManager:
             return False
 
     def _load_module_names_from_file(self, file_path: Path, data_table_id: str):
-        """Internal helper to parse a data table and cache its module names."""
+        """
+        Internal helper to parse a data table and cache its module names,
+        correctly combining ModuleName and Variation.
+        """
         try:
-            with open(file_path, 'r') as f:
+            with open(file_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-            module_names: Set[str] = {item["ModuleName"] for item in data if
-                                      isinstance(item, dict) and "ModuleName" in item}
-            self.module_name_cache[data_table_id] = sorted(list(module_names))
+
+            # Use a set to store the full, combined names to handle duplicates.
+            full_module_names: Set[str] = set()
+            for item in data:
+                # Check if the item is a dictionary and has the required keys
+                if isinstance(item, dict) and "ModuleName" in item and "Variation" in item:
+                    base_name = item["ModuleName"]
+                    variation = item["Variation"]
+
+                    # Construct the full name, e.g., "J_17Wall::3"
+                    # We can use zfill(3) to pad with zeros, e.g., "J_17Wall::003"
+                    # if that is the desired format. Let's assume simple for now.
+                    padded_variation = str(variation).zfill(3)
+                    full_name = f"{base_name}::{padded_variation}"
+
+                    full_module_names.add(full_name)
+
+            # Store the sorted list of unique, fully-qualified names
+            self.module_name_cache[data_table_id] = sorted(list(full_module_names))
+
         except Exception as e:
             print(f"Error parsing module names from {file_path}: {e}")
             self.module_name_cache[data_table_id] = []
