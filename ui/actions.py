@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Callable, Dict
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QKeySequence
@@ -72,3 +72,33 @@ def add_remove_context_menu(widget: QWidget, remove_cb: Callable[[], None]) -> N
     widget.customContextMenuRequested.connect(
         lambda pos: menu.exec(widget.mapToGlobal(pos))
     )
+
+def create_library_context_menu(widget: QWidget, actions: Dict[str, Callable]) -> QMenu:
+    """
+    Creates a standardized context menu for library-style list widgets.
+
+    Args:
+        widget: The parent widget for the menu.
+        actions: A dictionary mapping the action name (e.g., "Rename") to the
+                 callback function to execute. A name of "---" will create a separator.
+
+    Returns:
+        A configured QMenu object.
+    """
+    menu = QMenu(widget)
+    menu.setAttribute(Qt.WA_StyledBackground, True)
+    # Styles can be adjusted here
+    menu.setStyleSheet("""
+        QMenu { background: #3c3c3c; color: #e0e0e0; border: 1px solid #555; }
+        QMenu::item:selected { background: #5294e2; color: white; }
+    """)
+
+    for name, callback in actions.items():
+        if name == "---":
+            menu.addSeparator()
+        else:
+            action = QAction(name, widget)
+            action.triggered.connect(callback)
+            menu.addAction(action)
+
+    return menu

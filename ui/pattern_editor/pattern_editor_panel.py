@@ -29,133 +29,128 @@ class PatternEditorPanel(QWidget):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
 
-        # --- Create Managers and Core Components ---
-        self.asset_manager = AssetManager()
+        self._create_managers_and_components()
+        self._setup_layouts()
+        self._connect_signals()
+        self._perform_startup_actions()
 
-        self.pattern_area = PatternArea(num_floors=0)  # Start with an empty canvas
+    # ======================================================================
+    # --- Initialization Steps ---
+    # ======================================================================
+
+    def _create_managers_and_components(self):
+        """Initializes all the core data managers and UI panels."""
+        self.asset_manager = AssetManager()
+        self.pattern_area = PatternArea(num_floors=0)
         self._library = ModuleLibrary()
         self._input_panel = PatternInputPanel()
         self._output_panel = PatternOutputPanel()
+        self.building_viewer = BuildingViewerApp()
+        self.assembly_panel = BuildingAssemblyPanel()
+        self.column_header = ColumnHeaderWidget()
 
-        # Pass the asset_manager to the panels that need it
+        # Panels that require the asset manager
         self.floor_library_panel = FloorLibraryPanel(asset_manager=self.asset_manager)
         self._mapping_panel = MappingEditorPanel(asset_manager=self.asset_manager)
 
-        # --- UI Assembly ---
-
-        # Left-Side Panels (Floor Library and Module Library)
+    def _setup_layouts(self):
+        """Assembles all the widgets and layouts for the main UI."""
+        # Left-Side Panel
         library_box = QGroupBox("Module Library")
-        lib_layout = QVBoxLayout(library_box)
+        lib_layout = QVBoxLayout(library_box);
         lib_layout.addWidget(self._library)
-
         floor_library_box = QGroupBox("Floor Library")
-        floor_library_layout = QVBoxLayout(floor_library_box)
+        floor_library_layout = QVBoxLayout(floor_library_box);
         floor_library_layout.addWidget(self.floor_library_panel)
-
         left_panel_widget = QWidget()
         left_panel_layout = QVBoxLayout(left_panel_widget)
         left_panel_layout.setContentsMargins(0, 0, 0, 0)
         left_panel_layout.addWidget(floor_library_box)
         left_panel_layout.addWidget(library_box, 1)
 
-        # Right-Side Panels (3D Viewer and Assembly Controls)
+        # Right-Side Panel
         viewer_box = QGroupBox("3D Preview")
-        viewer_layout = QVBoxLayout(viewer_box)
-        self.building_viewer = BuildingViewerApp()
+        viewer_layout = QVBoxLayout(viewer_box);
         viewer_layout.addWidget(self.building_viewer)
-
-        self.assembly_panel = BuildingAssemblyPanel()
         viewer_and_controls_widget = QWidget()
         viewer_and_controls_layout = QVBoxLayout(viewer_and_controls_widget)
         viewer_and_controls_layout.setContentsMargins(0, 0, 0, 0)
         viewer_and_controls_layout.addWidget(viewer_box)
         viewer_and_controls_layout.addWidget(self.assembly_panel)
 
-        # Center Panel (Pattern Canvas)
+        # Center Panel
         canvas_box = QGroupBox("Pattern Canvas")
         canvas_layout = QVBoxLayout(canvas_box)
         canvas_layout.setContentsMargins(4, 4, 4, 4)
-
         content_layout = QVBoxLayout()
         content_layout.setContentsMargins(0, 5, 0, 0)
         content_layout.setSpacing(0)
-
-        self.column_header = ColumnHeaderWidget()
         pattern_scroll = QScrollArea()
         pattern_scroll.setWidgetResizable(True)
         pattern_scroll.setWidget(self.pattern_area)
         pattern_scroll.setFrameShape(QFrame.Shape.NoFrame)
-
         content_layout.addWidget(self.column_header)
         content_layout.addWidget(pattern_scroll, 1)
         canvas_layout.addLayout(content_layout, 1)
 
-        # Bottom Panels (Mapping and Text I/O)
+        # Bottom Panels
         mapping_box = QGroupBox("Mapping Editor")
-        mapping_layout = QVBoxLayout(mapping_box)
+        mapping_layout = QVBoxLayout(mapping_box);
         mapping_layout.addWidget(self._mapping_panel)
-
         text_io_box = QGroupBox("Text Pattern I/O")
         text_io_layout = QVBoxLayout(text_io_box)
         text_io_layout.addWidget(self._input_panel)
         text_io_layout.addWidget(self._output_panel)
 
-        # --- Main Window Splitters ---
+        # Main Splitters
         visual_splitter = QSplitter(Qt.Horizontal)
         visual_splitter.addWidget(left_panel_widget)
         visual_splitter.addWidget(canvas_box)
         visual_splitter.addWidget(viewer_and_controls_widget)
         visual_splitter.setSizes([250, 1000, 500])
-
         bottom_splitter = QSplitter(Qt.Horizontal)
         bottom_splitter.addWidget(mapping_box)
         bottom_splitter.addWidget(text_io_box)
-
         main_splitter = QSplitter(Qt.Vertical)
         main_splitter.addWidget(visual_splitter)
         main_splitter.addWidget(bottom_splitter)
         main_splitter.setStretchFactor(0, 4)
         main_splitter.setStretchFactor(1, 1)
-
         root_layout = QVBoxLayout(self)
         root_layout.addWidget(main_splitter)
 
-        # --- Signal Connections ---
+    def _connect_signals(self):
+        """Connects all the signal and slot connections for the application."""
+        # Pattern Area signals
         self.pattern_area.patternChanged.connect(self.patternChanged)
         self.pattern_area.patternChanged.connect(self._on_design_changed)
         self.pattern_area.columnWidthsChanged.connect(self.column_header.update_column_widths)
 
+        # Assembly Panel signals
         self.assembly_panel.assemblyChanged.connect(self._on_design_changed)
         self.assembly_panel.generate_button.clicked.connect(self._on_generate_button_clicked)
 
+        # Library signals
         self._library.categoryChanged.connect(self.pattern_area.redraw)
 
-        # self.building_viewer.view_picked.connect(self._on_view_pick)
+        # 3D Viewer signals
         self.building_viewer.viewer.picked.connect(self._on_view_pick)
 
-        # Connect signals for the new Floor Library
+        # Floor Library signals
         self.floor_library_panel.load_floors_requested.connect(self._on_load_floors_requested)
         self.floor_library_panel.request_current_floors.connect(self._on_save_floors_requested)
-        # Connect the export button, which now lives in the floor library
-        self.floor_library_panel.export_button.clicked.connect(self._on_export_button_clicked)
+        self.floor_library_panel.export_floors_requested.connect(self._on_export_floors_requested)
+
+    def _perform_startup_actions(self):
+        """Runs any actions required when the application first starts."""
+        # Automatically load the "Default Floors" set from the library.
+        self.floor_library_panel._on_load_clicked()
+
+    # ======================================================================
+    # --- Initialization Steps ---
+    # ======================================================================
 
 
-
-        # --- NEW: Temporary Test Button for Highlighting ---
-        # --- NEW: Temporary Test Button for Highlighting ---
-        # --- NEW: Temporary Test Button for Highlighting ---
-        self.test_highlight_button = QPushButton("Test Highlight")
-        self.test_highlight_button.clicked.connect(self._on_test_highlight)
-        # Add it to the bottom bar for easy access
-        self.pattern_area.bottom_bar_layout.addWidget(self.test_highlight_button)
-
-
-
-        # --- Initial Startup Action ---
-        # Programmatically select the first item (Default Floors) and click "Load"
-        if self.floor_library_panel.floor_set_list.count() > 0:
-            self.floor_library_panel.floor_set_list.setCurrentRow(0)
-            self.floor_library_panel.load_button.click()
 
     def _load_default_pattern(self):
         """Creates and loads a simple, default building pattern."""
@@ -327,11 +322,13 @@ class PatternEditorPanel(QWidget):
             pass
 
     @Slot()
-    def _on_export_button_clicked(self):
+    def _on_export_floors_requested(self, floor_set_id: str):
         """
-        Handles the full workflow for exporting a translated floor data table.
-        """
-        # 1. Get the currently selected mapping from the mapping panel
+            Handles the full workflow for exporting a translated floor data table.
+            """
+        print(f"Export requested for floor set ID: {floor_set_id}")
+
+        # 1. Ask the user which mapping they want to use for this export
         selected_dt_item = self._mapping_panel.data_table_list.currentItem()
         if not selected_dt_item:
             QMessageBox.warning(self, "No Mapping Selected",
@@ -345,12 +342,21 @@ class PatternEditorPanel(QWidget):
         mapping = self._mapping_panel.data_manager.load_mapping_for_id(entry['id'])
         if not mapping:
             QMessageBox.warning(self, "Empty Mapping",
-                                f"The mapping for '{display_name}' is empty. Please define mappings before exporting.")
+                                f"The mapping for '{display_name}' is empty.")
             return
 
-        # 2. Get the current floor definitions from the pattern area
-        floor_defs_json = self.get_floor_definitions_json()
-        floor_definitions = json.loads(floor_defs_json)
+        # 2. Get the floor definitions for the requested floor set
+        if floor_set_id == 'default':
+            # Handle the special case for the built-in default
+            default_path = self.asset_manager.user_assets_path / "floor_sets" / "default_floors.json"
+            with open(default_path, 'r') as f:
+                floor_definitions = json.load(f)
+        else:
+            floor_definitions = self.asset_manager.load_floor_set_data(floor_set_id)
+
+        if not floor_definitions:
+            QMessageBox.critical(self, "Error", "Could not load the floor definitions for export.")
+            return
 
         # 3. Translate the definitions using the exporter service
         translated_data = translate_floor_definitions(floor_definitions, mapping)
@@ -364,7 +370,7 @@ class PatternEditorPanel(QWidget):
             try:
                 with open(save_path, 'w') as f:
                     json.dump(translated_data, f, indent=4)
-                QMessageBox.information(self, "Success", f"Floor Data Table exported successfully to:\n{save_path}")
+                QMessageBox.information(self, "Success", f"Floor Data Table exported successfully.")
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to save file.\nError: {e}")
 

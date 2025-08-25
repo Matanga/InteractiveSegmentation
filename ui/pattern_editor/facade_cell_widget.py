@@ -72,12 +72,12 @@ class FacadeCellWidget(QFrame):
         self.animation.stop()
 
         start_color = QColor("#4a4a4a")
-        highlight_color = QColor("#A9A175")  # Desaturated yellow
+        highlight_color = QColor("#ff0026")
 
         self.animation.setStartValue(start_color)
         self.animation.setKeyValueAt(0.3, highlight_color)
         self.animation.setEndValue(start_color)
-        self.animation.setDuration(1200)
+        self.animation.setDuration(2000)
         self.animation.setEasingCurve(QEasingCurve.Type.OutQuad)
         self.animation.start()
 

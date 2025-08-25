@@ -1,0 +1,42 @@
+[
+    {
+        "Name": "Ground",
+        "Pattern": [
+            "<Wall00>[Door00-Window00]",
+            "[Wall00]<Window00>[Wall00]",
+            "<Wall00>",
+            "<Wall00>"
+        ],
+        "Height": 400
+    },
+    {
+        "Name": "Floor1",
+        "Pattern": [
+            "[Wall00]<Window00>[Wall00]",
+            "<Wall00>",
+            "[Wall00]<Window00>[Wall00]",
+            "<Window00-Wall00>"
+        ],
+        "Height": 400
+    },
+    {
+        "Name": "Floor2",
+        "Pattern": [
+            "[Window01]<Window00-Wall00>[Window01]",
+            "<Window00-Wall00>",
+            "[Window01]<Window00-Wall00>[Window01]",
+            "<Window00-Wall00>"
+        ],
+        "Height": 400
+    },
+    {
+        "Name": "New Floor 4",
+        "Pattern": [
+            "<Wall00-Door01>",
+            "<Wall00>",
+            "<Wall00>",
+            "<Wall00>"
+        ],
+        "Height": 400
+    }
+]
