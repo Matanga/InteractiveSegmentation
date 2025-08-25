@@ -221,7 +221,7 @@ class BuildingViewerApp(QWidget):
     def _place_single_floor(
             self,
             floor_name: str,
-            floor_def: "Floor",  # We'll need the full floor object
+            floor_def: "Floor",
             blueprint: Dict[str, Dict[int, List[str]]],
             all_strip_images: Dict[str, Image.Image],
             building_width: int,
@@ -260,6 +260,7 @@ class BuildingViewerApp(QWidget):
             # --- CONSTRUCT AND ADD METADATA ---
             # Find the correct floor index from the blueprint for this floor name
             # This is a bit complex, but finds the first matching floor index
+            grammar_string = "".join([g.to_string() for g in floor_def.facades.get(side_name, [])])
             floor_idx = next((idx for idx, name in floor_names_map.items() if name == floor_name), -1)
 
             meta = {
@@ -267,7 +268,7 @@ class BuildingViewerApp(QWidget):
                 "floor_name": floor_name,
                 "side": side_name,
                 "elevation": elevation,
-                "grammar": floor_def.facades.get(side_name, ""),
+                "grammar": grammar_string,  # Use the clean string here
                 "resolved_modules": blueprint.get(side_name, {}).get(floor_idx, [])
             }
 
