@@ -278,6 +278,7 @@ class PatternEditorPanel(QWidget):
             self.floor_library_panel._populate_floor_set_list()
         else:
             QMessageBox.critical(self, "Error", "An error occurred while saving the floor set.")
+
     @Slot()
     def _on_new_floor_set_requested(self):
         """Handles the 'New' action from the floor library."""
@@ -294,25 +295,61 @@ class PatternEditorPanel(QWidget):
 
     @Slot()
     def _on_save_floor_set_requested(self):
-        """Handles the 'Save' (overwrite) action."""
+        """
+        Handles the 'Save' (overwrite) action from the floor library's
+        context menu.
+        """
+        # If the currently active file is new (None) or the read-only default,
+        # then "Save" must behave like "Save As...".
         if self.active_floor_set_id is None or self.active_floor_set_id == "default":
-            # If the file is new or the default, "Save" must act like "Save As"
             self._on_save_floor_set_as_requested()
         else:
-            # Otherwise, overwrite the existing file
+            # Otherwise, we can safely overwrite the existing file.
             print(f"Overwriting floor set: {self.active_floor_set_id}")
             json_str = self.pattern_area.get_data_as_json()
             data = json.loads(json_str)
-            self.asset_manager.update_floor_set(self.active_floor_set_id, data)
-            QMessageBox.information(self, "Success", "Floor set saved successfully.")
+
+            success = self.asset_manager.update_floor_set(self.active_floor_set_id, data)
+
+            if success:
+                QMessageBox.information(self, "Success", "Floor set saved successfully.")
+            else:
+                QMessageBox.critical(self, "Error", "Failed to save floor set.")
 
     @Slot()
     def _on_save_floor_set_as_requested(self):
-        """Handles the 'Save As...' action by asking the FloorLibraryPanel to do the work."""
-        # This uses the same callback pattern as before
-        self.floor_library_panel.request_current_floors.emit(
-            self.floor_library_panel.receive_current_floors_for_saving
+        """
+        Orchestrates the entire "Save As..." workflow.
+        """
+        # 1. Get the current floor data directly from the PatternArea.
+        json_str = self.pattern_area.get_data_as_json()
+        current_floors_data = json.loads(json_str)
+
+        if not current_floors_data:
+            QMessageBox.warning(self, "No Data", "There are no floors in the canvas to save.")
+            return
+
+        # 2. Ask the user for a name.
+        display_name, ok = QInputDialog.getText(self, "Save Floor Set As...", "Enter a name for the new floor set:")
+        if not ok or not display_name.strip():
+            return
+
+        # TODO: Here we would ask for the linked_data_table_id in the future.
+        linked_id = None
+
+        # 3. Call the AssetManager to save the file and update the manifest.
+        success = self.asset_manager.save_new_floor_set(
+            display_name=display_name.strip(),
+            floor_data=current_floors_data,
+            linked_data_table_id=linked_id
         )
+
+        # 4. If successful, command the FloorLibraryPanel to refresh its list.
+        if success:
+            QMessageBox.information(self, "Success", f"Floor set '{display_name}' saved successfully.")
+            self.floor_library_panel._populate_floor_set_list()
+        else:
+            QMessageBox.critical(self, "Error", "An error occurred while saving the floor set.")
 
     @Slot()
     def _on_test_highlight(self):
