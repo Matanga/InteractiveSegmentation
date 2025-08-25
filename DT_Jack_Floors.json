@@ -2,7 +2,7 @@
     {
         "Name": "Ground",
         "Pattern": [
-            "<J_17Wall::001>[J_17Door::003-J_17Wall::002]",
+            "<J_17Wall::001>[J_17Corner::001-J_17Wall::002]",
             "[J_17Wall::001]<J_17Wall::002>[J_17Wall::001]",
             "<J_17Wall::001>",
             "<J_17Wall::001>"
@@ -26,6 +26,16 @@
             "<J_17Wall::002-J_17Wall::001>",
             "[J_17Wall::002]<J_17Wall::002-J_17Wall::001>[J_17Wall::002]",
             "<J_17Wall::002-J_17Wall::001>"
+        ],
+        "Height": 400
+    },
+    {
+        "Name": "New Floor 4",
+        "Pattern": [
+            "<J_17Wall::001>",
+            "<J_17Wall::001>",
+            "<J_17Wall::001>",
+            "<J_17Wall::001>"
         ],
         "Height": 400
     }

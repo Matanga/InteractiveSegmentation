@@ -3,35 +3,24 @@ import json
 
 from PySide6.QtCore import Qt, Slot, Signal
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QGroupBox, QToolBar, QScrollArea, QSplitter, QPushButton, QFrame, QMessageBox, QHBoxLayout
+    QWidget, QVBoxLayout, QGroupBox,  QScrollArea, QSplitter, QPushButton, QFrame, QMessageBox
 )
-from PySide6.QtGui import QAction, QActionGroup
 
-from domain.building_generator_2d import BuildingGenerator2D
-from domain.building_spec import BuildingDirector, PROCEDURAL_MODULE_HEIGHT
-from services.resources_loader import IconFiles
 from ui.building_viewer.building_assembly_panel import BuildingAssemblyPanel
+from ui.mapping_editor.mapping_data_manager import AssetManager
 from ui.pattern_editor.module_library import ModuleLibrary
 from ui.pattern_editor.pattern_text_panels import PatternInputPanel, PatternOutputPanel
 from ui.pattern_editor.pattern_area import PatternArea
 from ui.pattern_editor.column_header_widget import ColumnHeaderWidget
 
 from ui.building_viewer.building_viewer import BuildingViewerApp
-# NOTE: The RepeatableExpressionWorker is part of the 'Rigid' to 'Repeatable'
-# conversion feature, which is separate from our current refactor. We'll leave
-# it imported but be aware its functionality might need updating later if used.
-from services.facade_segmentation import RepeatableExpressionWorker
-from services.stacking_resolver import StackingResolver
-from domain.grammar import parse_building_json
-import services.building_assembler as assembler
-from services.facade_image_renderer import FacadeImageRenderer
+
 from PySide6.QtWidgets import QFileDialog
 from ui.mapping_editor.mapping_editor_panel import MappingEditorPanel
 from services.floor_data_exporter import translate_floor_definitions
+from ui.floor_library.floor_library_panel import FloorLibraryPanel
 
-from services.ui_adapter import prepare_spec_from_ui
 
-from services.building_image_exporter import generate_all_facade_strip_images
 
 class PatternEditorPanel(QWidget):
     # This signal is still valid. It will now emit the full JSON string.
@@ -39,20 +28,37 @@ class PatternEditorPanel(QWidget):
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
+
+        # --- Create Managers and Core Components ---
+        self.asset_manager = AssetManager()
+
+        self.pattern_area = PatternArea(num_floors=0)  # Start with an empty canvas
         self._library = ModuleLibrary()
-        self.pattern_area = PatternArea(3)
         self._input_panel = PatternInputPanel()
         self._output_panel = PatternOutputPanel()
-        self._mapping_panel = MappingEditorPanel()
+
+        # Pass the asset_manager to the panels that need it
+        self.floor_library_panel = FloorLibraryPanel(asset_manager=self.asset_manager)
+        self._mapping_panel = MappingEditorPanel(asset_manager=self.asset_manager)
 
         # --- UI Assembly ---
 
-        # Library box
+        # Left-Side Panels (Floor Library and Module Library)
         library_box = QGroupBox("Module Library")
         lib_layout = QVBoxLayout(library_box)
         lib_layout.addWidget(self._library)
 
-        # 3D viewer and Assembly Panel
+        floor_library_box = QGroupBox("Floor Library")
+        floor_library_layout = QVBoxLayout(floor_library_box)
+        floor_library_layout.addWidget(self.floor_library_panel)
+
+        left_panel_widget = QWidget()
+        left_panel_layout = QVBoxLayout(left_panel_widget)
+        left_panel_layout.setContentsMargins(0, 0, 0, 0)
+        left_panel_layout.addWidget(floor_library_box)
+        left_panel_layout.addWidget(library_box, 1)
+
+        # Right-Side Panels (3D Viewer and Assembly Controls)
         viewer_box = QGroupBox("3D Preview")
         viewer_layout = QVBoxLayout(viewer_box)
         self.building_viewer = BuildingViewerApp()
@@ -65,7 +71,7 @@ class PatternEditorPanel(QWidget):
         viewer_and_controls_layout.addWidget(viewer_box)
         viewer_and_controls_layout.addWidget(self.assembly_panel)
 
-        # Canvas box
+        # Center Panel (Pattern Canvas)
         canvas_box = QGroupBox("Pattern Canvas")
         canvas_layout = QVBoxLayout(canvas_box)
         canvas_layout.setContentsMargins(4, 4, 4, 4)
@@ -82,25 +88,9 @@ class PatternEditorPanel(QWidget):
 
         content_layout.addWidget(self.column_header)
         content_layout.addWidget(pattern_scroll, 1)
-
-        # --- THIS IS THE FIX ---
-        # The bottom bar layout lives inside PatternArea.
-        # We create the export button and add it to that pre-existing layout.
-        self.export_button = QPushButton("Export Floor Data Table...")
-        # Add the export button directly after the Add Floor button.
-        self.pattern_area.bottom_bar_layout.addWidget(self.export_button)
-
-        # Assemble the main canvas_layout
         canvas_layout.addLayout(content_layout, 1)
-        # --- END OF FIX ---
 
-        # --- Main Window Splitters ---
-        visual_splitter = QSplitter(Qt.Horizontal)
-        visual_splitter.addWidget(library_box)
-        visual_splitter.addWidget(canvas_box)
-        visual_splitter.addWidget(viewer_and_controls_widget)
-        visual_splitter.setSizes([250, 1000, 500])
-
+        # Bottom Panels (Mapping and Text I/O)
         mapping_box = QGroupBox("Mapping Editor")
         mapping_layout = QVBoxLayout(mapping_box)
         mapping_layout.addWidget(self._mapping_panel)
@@ -109,6 +99,13 @@ class PatternEditorPanel(QWidget):
         text_io_layout = QVBoxLayout(text_io_box)
         text_io_layout.addWidget(self._input_panel)
         text_io_layout.addWidget(self._output_panel)
+
+        # --- Main Window Splitters ---
+        visual_splitter = QSplitter(Qt.Horizontal)
+        visual_splitter.addWidget(left_panel_widget)
+        visual_splitter.addWidget(canvas_box)
+        visual_splitter.addWidget(viewer_and_controls_widget)
+        visual_splitter.setSizes([250, 1000, 500])
 
         bottom_splitter = QSplitter(Qt.Horizontal)
         bottom_splitter.addWidget(mapping_box)
@@ -126,14 +123,26 @@ class PatternEditorPanel(QWidget):
         # --- Signal Connections ---
         self.pattern_area.patternChanged.connect(self.patternChanged)
         self.pattern_area.patternChanged.connect(self._on_design_changed)
-        self.assembly_panel.assemblyChanged.connect(self._on_design_changed)
-        self._library.categoryChanged.connect(self.pattern_area.redraw)
         self.pattern_area.columnWidthsChanged.connect(self.column_header.update_column_widths)
-        self.assembly_panel.generate_button.clicked.connect(self._on_generate_button_clicked)
-        self.export_button.clicked.connect(self._on_export_button_clicked)
 
-        # --- Load a default pattern on startup ---
-        self._load_default_pattern()
+        self.assembly_panel.assemblyChanged.connect(self._on_design_changed)
+        self.assembly_panel.generate_button.clicked.connect(self._on_generate_button_clicked)
+
+        self._library.categoryChanged.connect(self.pattern_area.redraw)
+
+        self.building_viewer.viewer.picked.connect(self._on_view_pick)
+
+        # Connect signals for the new Floor Library
+        self.floor_library_panel.load_floors_requested.connect(self._on_load_floors_requested)
+        self.floor_library_panel.request_current_floors.connect(self._on_save_floors_requested)
+        # Connect the export button, which now lives in the floor library
+        self.floor_library_panel.export_button.clicked.connect(self._on_export_button_clicked)
+
+        # --- Initial Startup Action ---
+        # Programmatically select the first item (Default Floors) and click "Load"
+        if self.floor_library_panel.floor_set_list.count() > 0:
+            self.floor_library_panel.floor_set_list.setCurrentRow(0)
+            self.floor_library_panel.load_button.click()
 
     def _load_default_pattern(self):
         """Creates and loads a simple, default building pattern."""
@@ -182,6 +191,22 @@ class PatternEditorPanel(QWidget):
         This can be used for features like exporting to a file.
         """
         return self.pattern_area.get_data_as_json()
+
+    @Slot(list)
+    def _on_load_floors_requested(self, floor_data: list):
+        """Receives floor data from the library and loads it into the pattern area."""
+        json_str = json.dumps(floor_data)
+        self.pattern_area.load_from_json(json_str)
+
+    @Slot(object)
+    def _on_save_floors_requested(self, callback: callable):
+        """
+        Receives a request for the current floor data, gets it from the
+        pattern area, and sends it back via the provided callback.
+        """
+        json_str = self.pattern_area.get_data_as_json()
+        data = json.loads(json_str)
+        callback(data)
 
 
     @Slot()

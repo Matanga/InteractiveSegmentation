@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Slot, Qt, QEvent
 
-from .mapping_data_manager import DataManager
+from .mapping_data_manager import AssetManager
 # We need to get the list of our internal modules
 from services.resources_loader import IconFiles
 
@@ -16,11 +16,11 @@ class MappingEditorPanel(QWidget):
     The main panel for managing and editing module mappings.
     """
 
-    def __init__(self, parent: QWidget | None = None):
+    def __init__(self,asset_manager: AssetManager, parent: QWidget | None = None):
         super().__init__(parent)
         self.setObjectName("MappingEditorPanel")
 
-        self.data_manager = DataManager()
+        self.data_manager = asset_manager
 
         # --- Create Main Widgets ---
         self.data_table_list = QListWidget()

@@ -7,5 +7,21 @@
             "internal_path": "user_assets\\module_dbs\\jack.json",
             "mapping_file": "user_assets\\mappings\\jack_mapping.json"
         }
+    ],
+    "floor_sets": [
+        {
+            "id": "changed",
+            "display_name": "Changed",
+            "file_path": "user_assets\\floor_sets\\changed.json",
+            "description": "",
+            "linked_data_table_id": null
+        },
+        {
+            "id": "asdasd",
+            "display_name": "asdasd",
+            "file_path": "user_assets\\floor_sets\\asdasd.json",
+            "description": "",
+            "linked_data_table_id": null
+        }
     ]
 }
