@@ -25,28 +25,38 @@ class FloorLibraryPanel(QWidget):
 
         # --- UI Elements ---
         self.floor_set_list = QListWidget()
-        toolbar = QToolBar();
-        toolbar.setMovable(False)
-        self.new_action = toolbar.addAction("New")
-        self.save_as_action = toolbar.addAction("Save As...")
-        self.new_action.setToolTip("Create a new, blank floor set.")
-        self.save_as_action.setToolTip("Save the current floors as a new set.")
+
+        # --- THIS IS THE FIX: Use QPushButtons instead of a QToolBar ---
+        self.new_button = QPushButton("New")
+        self.save_as_button = QPushButton("Save As...")
+
+        self.new_button.setToolTip("Create a new, blank floor set.")
+        self.save_as_button.setToolTip("Save the current floors as a new set.")
+        # --- END OF FIX ---
+
+        # The Load, Save, Rename, Delete, and Export actions live in the context menu.
 
         # --- Layout ---
+        # A new horizontal layout for the bottom row of buttons
+        bottom_button_layout = QHBoxLayout()
+        bottom_button_layout.addWidget(self.new_button)
+        bottom_button_layout.addWidget(self.save_as_button)
+
         root_layout = QVBoxLayout(self)
-        root_layout.setContentsMargins(0, 0, 0, 0);
-        root_layout.setSpacing(2)
-        root_layout.addWidget(toolbar)
-        root_layout.addWidget(self.floor_set_list, 1)
+        root_layout.setContentsMargins(0, 0, 0, 0)
+        root_layout.setSpacing(4)
+        root_layout.addWidget(self.floor_set_list, 1)  # List takes the vertical stretch
+        root_layout.addLayout(bottom_button_layout)  # Add the button layout at the bottom
 
         # --- Connect Signals ---
-        self.new_action.triggered.connect(self.new_requested.emit)
-        self.save_as_action.triggered.connect(self.save_as_requested.emit)
+        self.new_button.clicked.connect(self.new_requested.emit)
+        self.save_as_button.clicked.connect(self.save_as_requested.emit)
 
         self.floor_set_list.itemDoubleClicked.connect(self._on_load_clicked)
         self.floor_set_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.floor_set_list.customContextMenuRequested.connect(self._show_context_menu)
 
+        # --- Initial Population ---
         self._populate_floor_set_list()
 
     def _populate_floor_set_list(self):
