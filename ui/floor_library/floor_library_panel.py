@@ -24,26 +24,47 @@ class FloorLibraryPanel(QWidget):
         self.floor_set_list = QListWidget()
         self.load_button = QPushButton("Load")
         self.save_as_button = QPushButton("Save As...")
-        self.export_button = QPushButton("Export...")  # Not yet connected
 
+        # --- NEW BUTTONS ---
+        self.rename_button = QPushButton("Rename")
+        self.delete_button = QPushButton("Delete")
+
+        self.export_button = QPushButton("Export...")  # This will be connected later
+
+        # --- Tooltips (Add for new buttons) ---
         self.load_button.setToolTip("Load the selected floor set into the Pattern Canvas")
         self.save_as_button.setToolTip("Save the current floors in the Pattern Canvas as a new set")
+        self.rename_button.setToolTip("Rename the selected floor set")
+        self.delete_button.setToolTip("Permanently delete the selected floor set")
         self.export_button.setToolTip("Export the selected floor set using a chosen module mapping")
 
         # --- Layout ---
-        button_layout = QHBoxLayout()
-        button_layout.addWidget(self.load_button)
-        button_layout.addWidget(self.save_as_button)
-        button_layout.addWidget(self.export_button)
+        top_button_layout = QHBoxLayout()
+        top_button_layout.addWidget(self.load_button)
+        top_button_layout.addWidget(self.save_as_button)
+
+        bottom_button_layout = QHBoxLayout()
+        bottom_button_layout.addWidget(self.rename_button)
+        bottom_button_layout.addWidget(self.delete_button)
+        bottom_button_layout.addStretch()  # Push export to the right
+        bottom_button_layout.addWidget(self.export_button)
 
         root_layout = QVBoxLayout(self)
         root_layout.setContentsMargins(0, 0, 0, 0)
         root_layout.addWidget(self.floor_set_list, 1)
-        root_layout.addLayout(button_layout)
+        root_layout.addLayout(top_button_layout)
+        root_layout.addLayout(bottom_button_layout)
 
         # --- Connect Signals ---
         self.load_button.clicked.connect(self._on_load_clicked)
         self.save_as_button.clicked.connect(self._on_save_as_clicked)
+
+        self.rename_button.clicked.connect(self._on_rename_clicked)
+        self.delete_button.clicked.connect(self._on_delete_clicked)
+        # Connect double-click to the same function as the "Load" button
+        self.floor_set_list.itemDoubleClicked.connect(self._on_load_clicked)
+        # Enable/disable buttons based on selection
+        self.floor_set_list.currentItemChanged.connect(self._update_button_states)
 
         # --- Initial Population ---
         self._populate_floor_set_list()
@@ -68,6 +89,52 @@ class FloorLibraryPanel(QWidget):
             # Store its unique ID in the item's data role for later retrieval.
             item.setData(Qt.UserRole, entry['id'])
             self.floor_set_list.addItem(item)
+
+    def receive_current_floors_for_saving(self, current_floors_data: list):
+        """
+        This is the callback that receives the floor data from the main panel
+        and proceeds with the full, persistent saving workflow.
+        """
+        if not current_floors_data:
+            QMessageBox.warning(self, "No Data", "There are no floors in the canvas to save.")
+            return
+
+        # 1. Ask for a display name for the new floor set.
+        display_name, ok = QInputDialog.getText(self, "Save Floor Set", "Enter a name for this new floor set:")
+        if not ok or not display_name.strip():
+            return
+
+        # TODO: In the future, we will also need to ask which Data Table this
+        # floor set should be linked to. For now, we will save it as unlinked.
+        linked_data_table_id = None
+
+        # --- THIS IS THE FIX ---
+        # 2. Use the AssetManager to perform the complete save operation.
+        #    This will save the file AND update the manifest.
+        success = self.asset_manager.save_new_floor_set(
+            display_name=display_name.strip(),
+            floor_data=current_floors_data,
+            linked_data_table_id=linked_data_table_id
+        )
+        # --- END OF FIX ---
+
+        # 3. If the save was successful, refresh the UI list.
+        if success:
+            QMessageBox.information(self, "Success", f"Floor set '{display_name}' saved successfully.")
+            self._populate_floor_set_list() # This will now find the new entry in the manifest.
+        else:
+            QMessageBox.critical(self, "Error", "An error occurred while saving the floor set.")
+
+    def _update_button_states(self, current_item):
+        """Enable/disable buttons based on the current selection."""
+        is_item_selected = current_item is not None
+        is_user_item_selected = is_item_selected and current_item.data(Qt.UserRole) != "default"
+
+        self.load_button.setEnabled(is_item_selected)
+        self.rename_button.setEnabled(is_user_item_selected)
+        self.delete_button.setEnabled(is_user_item_selected)
+        # Export button might have different logic, but we'll enable it for now
+        self.export_button.setEnabled(is_item_selected)
 
     @Slot()
     def _on_load_clicked(self):
@@ -108,37 +175,37 @@ class FloorLibraryPanel(QWidget):
         # The first step remains the same: ask the parent for the current data.
         self.request_current_floors.emit(self.receive_current_floors_for_saving)
 
-    def receive_current_floors_for_saving(self, current_floors_data: list):
-        """
-        This is the callback that receives the floor data from the main panel
-        and proceeds with the full, persistent saving workflow.
-        """
-        if not current_floors_data:
-            QMessageBox.warning(self, "No Data", "There are no floors in the canvas to save.")
-            return
+    @Slot()
+    def _on_rename_clicked(self):
+        """Renames the currently selected floor set."""
+        current_item = self.floor_set_list.currentItem()
+        if not current_item: return
 
-        # 1. Ask for a display name for the new floor set.
-        display_name, ok = QInputDialog.getText(self, "Save Floor Set", "Enter a name for this new floor set:")
-        if not ok or not display_name.strip():
-            return
+        asset_id = current_item.data(Qt.UserRole)
+        old_name = current_item.text()
 
-        # TODO: In the future, we will also need to ask which Data Table this
-        # floor set should be linked to. For now, we will save it as unlinked.
-        linked_data_table_id = None
+        new_name, ok = QInputDialog.getText(self, "Rename Floor Set", "Enter new name:", text=old_name)
 
-        # --- THIS IS THE FIX ---
-        # 2. Use the AssetManager to perform the complete save operation.
-        #    This will save the file AND update the manifest.
-        success = self.asset_manager.save_new_floor_set(
-            display_name=display_name.strip(),
-            floor_data=current_floors_data,
-            linked_data_table_id=linked_data_table_id
-        )
-        # --- END OF FIX ---
+        if ok and new_name.strip() and new_name.strip() != old_name:
+            self.asset_manager.rename_asset("floor_sets", asset_id, new_name.strip())
+            self._populate_floor_set_list()  # Refresh the list
 
-        # 3. If the save was successful, refresh the UI list.
-        if success:
-            QMessageBox.information(self, "Success", f"Floor set '{display_name}' saved successfully.")
-            self._populate_floor_set_list() # This will now find the new entry in the manifest.
-        else:
-            QMessageBox.critical(self, "Error", "An error occurred while saving the floor set.")
+    @Slot()
+    def _on_delete_clicked(self):
+        """Deletes the currently selected floor set after confirmation."""
+        current_item = self.floor_set_list.currentItem()
+        if not current_item: return
+
+        asset_id = current_item.data(Qt.UserRole)
+        display_name = current_item.text()
+
+        reply = QMessageBox.question(self, "Confirm Delete",
+                                     f"Are you sure you want to permanently delete '{display_name}'?\nThis cannot be undone.",
+                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                                     QMessageBox.StandardButton.No)
+
+        if reply == QMessageBox.StandardButton.Yes:
+            if self.asset_manager.delete_floor_set(asset_id):
+                self._populate_floor_set_list()  # Refresh the list
+            else:
+                QMessageBox.critical(self, "Error", "Failed to delete the floor set.")

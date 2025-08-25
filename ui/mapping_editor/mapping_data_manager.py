@@ -193,3 +193,69 @@ class AssetManager:
         except json.JSONDecodeError:
             print(f"Error: Floor set file is corrupted: {file_path}")
             return None
+
+    def delete_data_table(self, data_table_id: str) -> bool:
+        """
+        Deletes a data table and its associated mapping file from disk and
+        removes its entry from the manifest.
+        """
+        entry = next((dt for dt in self.get_data_table_entries() if dt['id'] == data_table_id), None)
+        if not entry:
+            print(f"Error: Could not find data table with ID '{data_table_id}' to delete.")
+            return False
+
+        try:
+            # Delete the files
+            (self.project_root / entry['internal_path']).unlink(missing_ok=True)
+            (self.project_root / entry['mapping_file']).unlink(missing_ok=True)
+
+            # Remove from manifest and save
+            self.manifest["data_tables"].remove(entry)
+            self._save_manifest()
+
+            # Clear from cache
+            if data_table_id in self.module_name_cache:
+                del self.module_name_cache[data_table_id]
+
+            print(f"Successfully deleted data table '{entry['display_name']}'.")
+            return True
+        except Exception as e:
+            print(f"Error deleting data table '{data_table_id}': {e}")
+            return False
+
+    def delete_floor_set(self, floor_set_id: str) -> bool:
+        """
+        Deletes a floor set file from disk and removes its entry from the manifest.
+        """
+        entry = next((fs for fs in self.get_floor_set_entries() if fs['id'] == floor_set_id), None)
+        if not entry:
+            print(f"Error: Could not find floor set with ID '{floor_set_id}' to delete.")
+            return False
+
+        try:
+            # Delete the file
+            (self.project_root / entry['file_path']).unlink(missing_ok=True)
+
+            # Remove from manifest and save
+            self.manifest["floor_sets"].remove(entry)
+            self._save_manifest()
+
+            print(f"Successfully deleted floor set '{entry['display_name']}'.")
+            return True
+        except Exception as e:
+            print(f"Error deleting floor set '{floor_set_id}': {e}")
+            return False
+
+    def rename_asset(self, asset_type: str, asset_id: str, new_display_name: str):
+        """
+        Renames an asset by updating its 'display_name' in the manifest.
+         asset_type should be 'data_tables' or 'floor_sets'.
+        """
+        if asset_type not in self.manifest: return
+
+        for entry in self.manifest[asset_type]:
+            if entry['id'] == asset_id:
+                entry['display_name'] = new_display_name
+                self._save_manifest()
+                print(f"Successfully renamed asset '{asset_id}' to '{new_display_name}'.")
+                return

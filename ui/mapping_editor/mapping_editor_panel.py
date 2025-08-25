@@ -16,19 +16,23 @@ class MappingEditorPanel(QWidget):
     The main panel for managing and editing module mappings.
     """
 
-    def __init__(self,asset_manager: AssetManager, parent: QWidget | None = None):
+    def __init__(self, asset_manager: AssetManager, parent: QWidget | None = None):
         super().__init__(parent)
         self.setObjectName("MappingEditorPanel")
 
         self.data_manager = asset_manager
 
-        # --- Create Main Widgets ---
+        # --- Create All Widgets ---
         self.data_table_list = QListWidget()
-        self.load_data_table_button = QPushButton("Load Unreal Data Table...")
-
-        # Create the Save Button
+        self.load_data_table_button = QPushButton("Load Data Table...")
         self.save_mapping_button = QPushButton("Save Mapping")
-        self.save_mapping_button.setEnabled(False)  # Disabled until a DT is selected
+        self.rename_dt_button = QPushButton("Rename")
+        self.delete_dt_button = QPushButton("Delete")
+
+        # Disable buttons that require a selection by default
+        self.save_mapping_button.setEnabled(False)
+        self.rename_dt_button.setEnabled(False)
+        self.delete_dt_button.setEnabled(False)
 
         # Create the Mapping Table
         self.mapping_table = QTableWidget()
@@ -39,27 +43,34 @@ class MappingEditorPanel(QWidget):
 
         # --- Layouts ---
 
-        # A new horizontal layout for the Load and Save buttons
-        button_layout = QHBoxLayout()
-        button_layout.addWidget(self.load_data_table_button)
-        button_layout.addWidget(self.save_mapping_button)
+        # Top row of buttons in the left panel
+        top_button_layout = QHBoxLayout()
+        top_button_layout.addWidget(self.load_data_table_button)
+        top_button_layout.addStretch()
 
-        # The main layout for the left-side Data Table panel
+        # Bottom row of buttons in the left panel
+        bottom_button_layout = QHBoxLayout()
+        bottom_button_layout.addWidget(self.rename_dt_button)
+        bottom_button_layout.addWidget(self.delete_dt_button)
+        bottom_button_layout.addStretch()
+        bottom_button_layout.addWidget(self.save_mapping_button)
+
+        # Main layout for the entire left-side Data Table panel
         data_table_layout = QVBoxLayout()
-        data_table_layout.addWidget(self.data_table_list)
-        data_table_layout.addLayout(button_layout)  # Add the button layout here
+        data_table_layout.addLayout(top_button_layout)
+        data_table_layout.addWidget(self.data_table_list, 1)  # List takes stretch
+        data_table_layout.addLayout(bottom_button_layout)
 
         data_table_box = QGroupBox("Loaded Data Tables")
         data_table_box.setLayout(data_table_layout)
 
-        # The layout for the right-side Mapping panel
+        # Layout for the right-side Mapping panel
         mapping_layout = QVBoxLayout()
         mapping_layout.addWidget(self.mapping_table)
-
         mapping_box = QGroupBox("Module Mappings")
         mapping_box.setLayout(mapping_layout)
 
-        # The root layout holding both main panels
+        # Root layout holding both main panels
         root_layout = QHBoxLayout(self)
         root_layout.addWidget(data_table_box, 1)
         root_layout.addWidget(mapping_box, 3)
@@ -67,6 +78,8 @@ class MappingEditorPanel(QWidget):
         # --- Connect Signals ---
         self.load_data_table_button.clicked.connect(self._on_load_data_table)
         self.save_mapping_button.clicked.connect(self._on_save_mapping)
+        self.rename_dt_button.clicked.connect(self._on_rename_data_table)
+        self.delete_dt_button.clicked.connect(self._on_delete_data_table)
         self.data_table_list.currentItemChanged.connect(self._on_data_table_selected)
 
         # --- Initial Population ---
@@ -116,6 +129,11 @@ class MappingEditorPanel(QWidget):
         selected data table. It also installs an event filter on the comboboxes
         to prevent them from stealing mouse wheel scroll events.
         """
+        is_item_selected = current_item is not None
+        self.save_mapping_button.setEnabled(is_item_selected)
+        self.rename_dt_button.setEnabled(is_item_selected)
+        self.delete_dt_button.setEnabled(is_item_selected)
+
         if not current_item:
             self.save_mapping_button.setEnabled(False)
             for row in range(self.mapping_table.rowCount()):
@@ -155,6 +173,7 @@ class MappingEditorPanel(QWidget):
             self.eventFilter = wheel_event_filter
 
             self.mapping_table.setCellWidget(row, 1, combo)
+
     @Slot()
     def _on_save_mapping(self):
         """
@@ -188,3 +207,42 @@ class MappingEditorPanel(QWidget):
         # Use the data manager to save the file
         self.data_manager.save_mapping_for_id(data_table_id, new_mapping)
         QMessageBox.information(self, "Success", f"Mapping for '{display_name}' saved successfully.")
+
+    @Slot()
+    def _on_rename_data_table(self):
+        """Renames the currently selected data table."""
+        current_item = self.data_table_list.currentItem()
+        if not current_item: return
+
+        entry = self.data_manager.get_entry_by_display_name(current_item.text())
+        if not entry: return
+        asset_id = entry['id']
+        old_name = entry['display_name']
+
+        new_name, ok = QInputDialog.getText(self, "Rename Data Table", "Enter new name:", text=old_name)
+
+        if ok and new_name.strip() and new_name.strip() != old_name:
+            self.data_manager.rename_asset("data_tables", asset_id, new_name.strip())
+            self._populate_data_table_list()  # Refresh the list
+
+    @Slot()
+    def _on_delete_data_table(self):
+        """Deletes the currently selected data table after confirmation."""
+        current_item = self.data_table_list.currentItem()
+        if not current_item: return
+
+        entry = self.data_manager.get_entry_by_display_name(current_item.text())
+        if not entry: return
+        asset_id = entry['id']
+        display_name = entry['display_name']
+
+        reply = QMessageBox.question(self, "Confirm Delete",
+                                     f"Are you sure you want to permanently delete the data table '{display_name}' and its associated mapping?\nThis cannot be undone.",
+                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                                     QMessageBox.StandardButton.No)
+
+        if reply == QMessageBox.StandardButton.Yes:
+            if self.data_manager.delete_data_table(asset_id):
+                self._populate_data_table_list()  # Refresh
+            else:
+                QMessageBox.critical(self, "Error", "Failed to delete the data table.")
