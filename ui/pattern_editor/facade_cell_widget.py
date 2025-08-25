@@ -1,7 +1,7 @@
 from __future__ import annotations
 import json
 
-from PySide6.QtCore import Qt, Signal, QMimeData
+from PySide6.QtCore import Qt, Signal, QMimeData, QTimer
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QWidget, QSizePolicy
 from PySide6.QtGui import QMouseEvent
 
@@ -41,13 +41,14 @@ class FacadeCellWidget(QFrame):
         self.setObjectName("FacadeCellWidget")
 
         # A border will visually separate the four cells.
-        self.setStyleSheet("""
+        self.base_stylesheet = """
             QFrame#FacadeCellWidget {
                 background-color: #4a4a4a;
                 border: 1px solid #555;
                 border-radius: 4px;
             }
-        """)
+        """
+        self.setStyleSheet(self.base_stylesheet)
 
         # The root layout now directly contains the module layout. No header.
         root_layout = QHBoxLayout(self)
@@ -161,3 +162,26 @@ class FacadeCellWidget(QFrame):
                 layout.removeWidget(self._indicator)
         self._indicator.setParent(None)
         self._indicator.hide()
+
+    def trigger_highlight(self, duration_ms: int = 1000):
+        """
+        Applies a temporary highlight style to the widget.
+        """
+        # 1. Define the highlighted style
+        highlight_stylesheet = """
+            QFrame#FacadeCellWidget {
+                background-color: #4a4a4a;
+                border: 2px solid #5294e2; /* A bright blue border */
+                border-radius: 4px;
+            }
+        """
+
+        # 2. Apply the highlight style immediately
+        self.setStyleSheet(highlight_stylesheet)
+
+        # 3. Use a QTimer to revert back to the base style after the duration
+        QTimer.singleShot(duration_ms, self._remove_highlight)
+
+    def _remove_highlight(self):
+        """Private slot to restore the original stylesheet."""
+        self.setStyleSheet(self.base_stylesheet)

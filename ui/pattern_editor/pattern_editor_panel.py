@@ -138,6 +138,18 @@ class PatternEditorPanel(QWidget):
         # Connect the export button, which now lives in the floor library
         self.floor_library_panel.export_button.clicked.connect(self._on_export_button_clicked)
 
+
+
+        # --- NEW: Temporary Test Button for Highlighting ---
+        # --- NEW: Temporary Test Button for Highlighting ---
+        # --- NEW: Temporary Test Button for Highlighting ---
+        self.test_highlight_button = QPushButton("Test Highlight")
+        self.test_highlight_button.clicked.connect(self._on_test_highlight)
+        # Add it to the bottom bar for easy access
+        self.pattern_area.bottom_bar_layout.addWidget(self.test_highlight_button)
+
+
+
         # --- Initial Startup Action ---
         # Programmatically select the first item (Default Floors) and click "Load"
         if self.floor_library_panel.floor_set_list.count() > 0:
@@ -191,6 +203,36 @@ class PatternEditorPanel(QWidget):
         This can be used for features like exporting to a file.
         """
         return self.pattern_area.get_data_as_json()
+
+    @Slot()
+    def _on_test_highlight(self):
+        """
+        A test function to verify the highlight effect on a specific cell.
+        It will attempt to highlight the "front" facade of the "Ground" floor.
+        """
+        print("--- Testing Highlight ---")
+
+        # We need to find the specific widget in our layout.
+        # This is a bit complex, but it simulates what the final function will do.
+
+        # Get the list of all floor rows
+        floor_rows = self.pattern_area._floor_rows
+
+        # Find the "Ground" floor row
+        target_row = None
+        for row in floor_rows:
+            if row.header.name_edit.text() == "Ground":
+                target_row = row
+                break
+
+        if target_row:
+            # Get the "front" cell from that row
+            front_cell = target_row.cell_front
+            print("Found target cell. Triggering highlight...")
+            # Call our new public method
+            front_cell.trigger_highlight()
+        else:
+            print("Could not find the 'Ground' floor to highlight.")
 
     @Slot(list)
     def _on_load_floors_requested(self, floor_data: list):
