@@ -259,3 +259,28 @@ class AssetManager:
                 self._save_manifest()
                 print(f"Successfully renamed asset '{asset_id}' to '{new_display_name}'.")
                 return
+
+    def update_floor_set(self, floor_set_id: str, floor_data: List[Dict[str, Any]]) -> bool:
+        """
+        Overwrites an existing floor set's data file with new content.
+        This does NOT change the manifest, only the content of the linked file.
+        """
+        # 1. Find the entry for the floor set in the manifest.
+        entry = next((fs for fs in self.get_floor_set_entries() if fs['id'] == floor_set_id), None)
+
+        if not entry:
+            print(f"Error: Could not find floor set with ID '{floor_set_id}' to update.")
+            return False
+
+        # 2. Get the file path from the manifest entry.
+        file_path = self.project_root / entry['file_path']
+
+        # 3. Overwrite the file with the new data.
+        try:
+            with open(file_path, 'w') as f:
+                json.dump(floor_data, f, indent=4)
+            print(f"Successfully updated floor set file: {file_path}")
+            return True
+        except Exception as e:
+            print(f"Error: Failed to update floor set file at {file_path}. Reason: {e}")
+            return False

@@ -3,7 +3,7 @@ import json
 
 from PySide6.QtCore import Qt, Slot, Signal
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QGroupBox,  QScrollArea, QSplitter, QPushButton, QFrame, QMessageBox
+    QWidget, QVBoxLayout, QGroupBox, QScrollArea, QSplitter, QPushButton, QFrame, QMessageBox, QInputDialog
 )
 
 from ui.building_viewer.building_assembly_panel import BuildingAssemblyPanel
@@ -28,6 +28,8 @@ class PatternEditorPanel(QWidget):
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
+
+        self.active_floor_set_id: str | None = "default"
 
         self._create_managers_and_components()
         self._setup_layouts()
@@ -137,9 +139,12 @@ class PatternEditorPanel(QWidget):
         self.building_viewer.viewer.picked.connect(self._on_view_pick)
 
         # Floor Library signals
-        self.floor_library_panel.load_floors_requested.connect(self._on_load_floors_requested)
-        self.floor_library_panel.request_current_floors.connect(self._on_save_floors_requested)
-        self.floor_library_panel.export_floors_requested.connect(self._on_export_floors_requested)
+        # Floor Library signals
+        self.floor_library_panel.new_requested.connect(self._on_new_floor_set_requested)
+        self.floor_library_panel.save_requested.connect(self._on_save_floor_set_requested)
+        self.floor_library_panel.save_as_requested.connect(self._on_save_floor_set_as_requested)
+        self.floor_library_panel.load_requested.connect(self._on_load_floors_requested) # Connect to the correct signal
+        self.floor_library_panel.export_requested.connect(self._on_export_floors_requested)
 
     def _perform_startup_actions(self):
         """Runs any actions required when the application first starts."""
@@ -149,8 +154,6 @@ class PatternEditorPanel(QWidget):
     # ======================================================================
     # --- Initialization Steps ---
     # ======================================================================
-
-
 
     def _load_default_pattern(self):
         """Creates and loads a simple, default building pattern."""
@@ -236,8 +239,6 @@ class PatternEditorPanel(QWidget):
         if target_cell:
             target_cell.trigger_highlight()
 
-
-
     def get_floor_definitions_json(self) -> str:
         """
         Public method to retrieve the complete JSON string of all floor
@@ -245,6 +246,73 @@ class PatternEditorPanel(QWidget):
         This can be used for features like exporting to a file.
         """
         return self.pattern_area.get_data_as_json()
+
+    @Slot()
+    def _on_save_as_triggered(self):
+        """
+        Orchestrates the entire "Save As..." workflow. This is called when
+        the user clicks the "Save As..." button in the floor library.
+        """
+        # 1. Get the current floor data directly from the PatternArea.
+        json_str = self.pattern_area.get_data_as_json()
+        current_floors_data = json.loads(json_str)
+
+        if not current_floors_data:
+            QMessageBox.warning(self, "No Data", "There are no floors in the canvas to save.")
+            return
+
+        # 2. Ask the user for a name.
+        display_name, ok = QInputDialog.getText(self, "Save Floor Set As...", "Enter a name for the new floor set:")
+        if not ok or not display_name.strip():
+            return
+
+        # 3. Call the AssetManager to save the file and update the manifest.
+        success = self.asset_manager.save_new_floor_set(
+            display_name=display_name.strip(),
+            floor_data=current_floors_data
+        )
+
+        # 4. If successful, command the FloorLibraryPanel to refresh its list.
+        if success:
+            QMessageBox.information(self, "Success", f"Floor set '{display_name}' saved successfully.")
+            self.floor_library_panel._populate_floor_set_list()
+        else:
+            QMessageBox.critical(self, "Error", "An error occurred while saving the floor set.")
+    @Slot()
+    def _on_new_floor_set_requested(self):
+        """Handles the 'New' action from the floor library."""
+        # Create a single, simple default floor
+        default_data = [{
+            "Name": "New Floor 1",
+            "Pattern": ["<Wall00>", "<Wall00>", "<Wall00>", "<Wall00>"],
+            "Height": 400
+        }]
+        self.pattern_area.load_from_json(json.dumps(default_data))
+        # Critically, set the active ID to None, indicating it's an unsaved file
+        self.active_floor_set_id = None
+        print("Created new, unsaved floor set.")
+
+    @Slot()
+    def _on_save_floor_set_requested(self):
+        """Handles the 'Save' (overwrite) action."""
+        if self.active_floor_set_id is None or self.active_floor_set_id == "default":
+            # If the file is new or the default, "Save" must act like "Save As"
+            self._on_save_floor_set_as_requested()
+        else:
+            # Otherwise, overwrite the existing file
+            print(f"Overwriting floor set: {self.active_floor_set_id}")
+            json_str = self.pattern_area.get_data_as_json()
+            data = json.loads(json_str)
+            self.asset_manager.update_floor_set(self.active_floor_set_id, data)
+            QMessageBox.information(self, "Success", "Floor set saved successfully.")
+
+    @Slot()
+    def _on_save_floor_set_as_requested(self):
+        """Handles the 'Save As...' action by asking the FloorLibraryPanel to do the work."""
+        # This uses the same callback pattern as before
+        self.floor_library_panel.request_current_floors.emit(
+            self.floor_library_panel.receive_current_floors_for_saving
+        )
 
     @Slot()
     def _on_test_highlight(self):
@@ -276,11 +344,23 @@ class PatternEditorPanel(QWidget):
         else:
             print("Could not find the 'Ground' floor to highlight.")
 
-    @Slot(list)
-    def _on_load_floors_requested(self, floor_data: list):
-        """Receives floor data from the library and loads it into the pattern area."""
-        json_str = json.dumps(floor_data)
-        self.pattern_area.load_from_json(json_str)
+    @Slot(str)  # <-- It now receives a string ID
+    def _on_load_floors_requested(self, floor_set_id: str):
+        """Receives a floor set ID from the library, loads it, and sets it as active."""
+        print(f"Load requested for floor set ID: {floor_set_id}")
+        self.active_floor_set_id = floor_set_id  # <-- Set the active ID
+
+        if floor_set_id == "default":
+            default_path = self.asset_manager.user_assets_path / "floor_sets" / "default_floors.json"
+            if default_path.exists():
+                with open(default_path, 'r') as f:
+                    floor_data = json.load(f)
+                    self.pattern_area.load_from_json(json.dumps(floor_data))
+            return
+
+        floor_data = self.asset_manager.load_floor_set_data(floor_set_id)
+        if floor_data:
+            self.pattern_area.load_from_json(json.dumps(floor_data))
 
     @Slot(object)
     def _on_save_floors_requested(self, callback: callable):

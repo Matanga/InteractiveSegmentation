@@ -1,7 +1,9 @@
 from __future__ import annotations
+
+from PyQt5.QtWidgets import QAction
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QListWidget, QPushButton, QInputDialog,
-    QMessageBox, QListWidgetItem, QHBoxLayout
+    QMessageBox, QListWidgetItem, QHBoxLayout, QToolBar
 )
 from PySide6.QtCore import Slot, Qt, Signal
 
@@ -10,10 +12,12 @@ from ui.actions import create_library_context_menu
 
 
 class FloorLibraryPanel(QWidget):
-    # --- Signals for communication ---
-    request_current_floors = Signal(object)
-    load_floors_requested = Signal(list)
-    export_floors_requested = Signal(str)
+    # --- Simplified Signals ---
+    new_requested = Signal()
+    save_as_requested = Signal()
+    save_requested = Signal()
+    load_requested = Signal(str)
+    export_requested = Signal(str)
 
     def __init__(self, asset_manager: AssetManager, parent: QWidget | None = None):
         super().__init__(parent)
@@ -21,46 +25,29 @@ class FloorLibraryPanel(QWidget):
 
         # --- UI Elements ---
         self.floor_set_list = QListWidget()
-
-        # Revert the "Save" action back to a standard QPushButton.
-        # It is no longer a QAction in a QToolBar.
-        self.save_as_button = QPushButton("Save Current")
-        self.save_as_button.setToolTip("Save the current floors in the Pattern Canvas as a new set")
-
-        self.export_button = QPushButton("Export...")
-        self.export_button.setToolTip("Export the selected floor set using a chosen module mapping")
-        self.export_button.setEnabled(False) # Disabled until an item is selected
-
+        toolbar = QToolBar();
+        toolbar.setMovable(False)
+        self.new_action = toolbar.addAction("New")
+        self.save_as_action = toolbar.addAction("Save As...")
+        self.new_action.setToolTip("Create a new, blank floor set.")
+        self.save_as_action.setToolTip("Save the current floors as a new set.")
 
         # --- Layout ---
-        bottom_button_layout = QHBoxLayout()
-        bottom_button_layout.addWidget(self.save_as_button)
-        bottom_button_layout.addWidget(self.export_button)
-
-
         root_layout = QVBoxLayout(self)
-        root_layout.setContentsMargins(0, 0, 0, 0)
-        root_layout.setSpacing(4)
-        root_layout.addWidget(self.floor_set_list, 1)  # List takes available space
-        root_layout.addLayout(bottom_button_layout) # Add the button layout here
-
+        root_layout.setContentsMargins(0, 0, 0, 0);
+        root_layout.setSpacing(2)
+        root_layout.addWidget(toolbar)
+        root_layout.addWidget(self.floor_set_list, 1)
 
         # --- Connect Signals ---
-        self.save_as_button.clicked.connect(self._on_save_as_clicked)  # Connect the button
-        self.export_button.clicked.connect(self._on_export_clicked)
+        self.new_action.triggered.connect(self.new_requested.emit)
+        self.save_as_action.triggered.connect(self.save_as_requested.emit)
 
         self.floor_set_list.itemDoubleClicked.connect(self._on_load_clicked)
         self.floor_set_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.floor_set_list.customContextMenuRequested.connect(self._show_context_menu)
 
-        # Every time the selected item changes, call the update method.
-        self.floor_set_list.currentItemChanged.connect(self._update_button_states)
-
-
-
-        # --- Initial Population ---
         self._populate_floor_set_list()
-        self._update_button_states(None) # Call initially to set correct disabled state
 
     def _populate_floor_set_list(self):
         """Populates the list of saved floor sets from the manifest."""
@@ -74,6 +61,52 @@ class FloorLibraryPanel(QWidget):
             self.floor_set_list.addItem(item)
 
     # --- Action Slots (Unchanged, but provided for completeness) ---
+    def _populate_floor_set_list(self):
+        # ... (This method is correct and unchanged) ...
+        self.floor_set_list.clear()
+        default_item = QListWidgetItem("Default Floors (Built-in)")
+        default_item.setData(Qt.UserRole, "default")
+        self.floor_set_list.addItem(default_item)
+        for entry in self.asset_manager.get_floor_set_entries():
+            item = QListWidgetItem(entry['display_name'])
+            item.setData(Qt.UserRole, entry['id'])
+            self.floor_set_list.addItem(item)
+
+    @Slot()
+    def _on_load_clicked(self):
+        """
+        Gets the ID of the selected floor set and emits the load_requested signal.
+        """
+        current_item = self.floor_set_list.currentItem()
+        if not current_item and self.floor_set_list.count() > 0:
+            current_item = self.floor_set_list.item(0) # Default to first item for startup
+        if not current_item: return
+
+        # --- THIS IS THE FIX ---
+        # Get the ID (string) from the item's data and emit it.
+        floor_set_id = current_item.data(Qt.UserRole)
+        self.load_requested.emit(floor_set_id)
+        # --- END OF FIX ---
+
+    @Slot(object)
+    def _show_context_menu(self, pos):
+        item = self.floor_set_list.itemAt(pos)
+        if not item: return
+
+        is_user_item = item.data(Qt.UserRole) != "default"
+
+        actions = {"Load": self._on_load_clicked}
+        if is_user_item:
+            actions["Save"] = self.save_requested.emit
+            actions["---"] = None
+            actions["Rename"] = self._on_rename_clicked
+            actions["Delete"] = self._on_delete_clicked
+
+        actions["---"] = None
+        actions["Export..."] = self._on_export_clicked
+
+        menu = create_library_context_menu(self, actions)
+        menu.exec(self.floor_set_list.mapToGlobal(pos))
 
     @Slot()
     def _on_load_clicked(self):
@@ -88,13 +121,13 @@ class FloorLibraryPanel(QWidget):
                 with open(default_path, 'r') as f:
                     import json;
                     floor_data = json.load(f)
-                    self.load_floors_requested.emit(floor_data)
+                    self.load_requested.emit(current_item.data(Qt.UserRole))
             else:
                 QMessageBox.critical(self, "Error", "default_floors.json not found!")
             return
         floor_data = self.asset_manager.load_floor_set_data(floor_set_id)
         if floor_data:
-            self.load_floors_requested.emit(floor_data)
+            self.load_requested.emit(current_item.data(Qt.UserRole))
         else:
             QMessageBox.critical(self, "Error", "Failed to load floor set data.")
 
@@ -144,7 +177,7 @@ class FloorLibraryPanel(QWidget):
         current_item = self.floor_set_list.currentItem()
         if not current_item: return
         asset_id = current_item.data(Qt.UserRole)
-        self.export_floors_requested.emit(asset_id)
+        self.export_requested.emit(asset_id)
 
     @Slot(object)
     def _show_context_menu(self, pos):
@@ -154,6 +187,7 @@ class FloorLibraryPanel(QWidget):
         actions = {"Load": self._on_load_clicked}
         if is_user_item:
             actions["---"] = None
+            actions["Save"] = self.save_requested.emit
             actions["Rename"] = self._on_rename_clicked
             actions["Delete"] = self._on_delete_clicked
         actions["---"] = None
