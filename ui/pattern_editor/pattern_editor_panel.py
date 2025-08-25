@@ -130,6 +130,7 @@ class PatternEditorPanel(QWidget):
 
         self._library.categoryChanged.connect(self.pattern_area.redraw)
 
+        # self.building_viewer.view_picked.connect(self._on_view_pick)
         self.building_viewer.viewer.picked.connect(self._on_view_pick)
 
         # Connect signals for the new Floor Library
@@ -198,52 +199,35 @@ class PatternEditorPanel(QWidget):
         Handles a pick event from the 3D viewer. It finds the corresponding
         2D facade cell and triggers its highlight effect.
         """
-        meta = info.get("meta")
-        if not meta:
+        # --- THIS IS THE FIX ---
+        # The 'info' dictionary that the signal emits IS our metadata.
+        # We do not need to look for a nested 'meta' key.
+        if not info:
             return
 
-        object_type = meta.get("type")
-        floor_name_from_meta = meta.get("floor_name")
-        side_name = meta.get("side")
+        object_type = info.get("type")
+        floor_name_from_meta = info.get("floor_name")
+        side_name = info.get("side")
+        # --- END OF FIX ---
 
         if object_type != "facade_panel" or not floor_name_from_meta or not side_name:
             return
 
-        # --- VERBOSE DEBUGGING ---
-        print("\n" + "=" * 20 + " 3D Pick Debug " + "=" * 20)
-        print(f"Attempting to find and highlight a cell...")
-        print(f"  - Metadata wants Floor Name: '{floor_name_from_meta}'")
-        print(f"  - Metadata wants Side Name: '{side_name}'")
+        print(f"3D Pick Event: Highlighting {floor_name_from_meta} - {side_name}")
 
         target_row = None
-
-        print("\n--- Searching through UI Floor Rows ---")
-        if not self.pattern_area._floor_rows:
-            print("  - CRITICAL: The '_floor_rows' list in PatternArea is empty. Cannot find any rows.")
-
-        for i, row in enumerate(self.pattern_area._floor_rows):
-            # 1. Get the name from the UI's QLineEdit
-            ui_name = row.header.name_edit.text()
-
-            # 2. Print what we are comparing
-            print(f"  - Checking Row {i}: UI name is '{ui_name}'")
-
-            # 3. Perform the comparison
-            if ui_name.strip() == floor_name_from_meta.strip():
-                print(f"    -> SUCCESS: Found a match for '{floor_name_from_meta}' at Row {i}.")
+        for row in self.pattern_area._floor_rows:
+            ui_name = row.header.name_edit.text().strip()
+            meta_name = floor_name_from_meta.strip()
+            # Let's use a case-insensitive comparison for robustness
+            if ui_name.lower() == meta_name.lower():
                 target_row = row
-                break  # Stop searching once we find a match
-            else:
-                print(f"    -> FAILED: '{ui_name}' != '{floor_name_from_meta}'")
-
-        print("-" * 51)
+                break
 
         if not target_row:
-            print(f"  - FINAL VERDICT: Could not find a matching floor row in the UI.")
-            print("=" * 51 + "\n")
+            print(f"Warning: Could not find a floor row named '{floor_name_from_meta}' in the UI.")
             return
 
-        # --- Find the corresponding FacadeCellWidget in that row ---
         target_cell = None
         if side_name == "front":
             target_cell = target_row.cell_front
@@ -254,15 +238,8 @@ class PatternEditorPanel(QWidget):
         elif side_name == "right":
             target_cell = target_row.cell_right
 
-        # --- Trigger the highlight effect ---
         if target_cell:
-            print("  - Found target cell. Triggering highlight...")
             target_cell.trigger_highlight()
-            print("--- 3D Pick Debug Complete ---")
-        else:
-            print(f"  - FINAL VERDICT: Found the row, but could not find a cell for side '{side_name}'.")
-
-        print("=" * 51 + "\n")
 
 
 

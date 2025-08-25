@@ -4,6 +4,8 @@ from __future__ import annotations
 import random
 from typing import Dict, List
 import json
+
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QWidget, QVBoxLayout
 
 from services.ui_adapter import prepare_spec_from_ui
